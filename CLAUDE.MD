@@ -24,3 +24,13 @@ should build the habit of anticipating a reader, not just flag gaps.
 
 **Scope:** Demo / proof-of-concept, internal and investor-facing. Input cap
 ~3000 words for now so don't hard-code the ceiling.
+
+## Hard Stops
+- Do not install dependencies without explicit approval. 
+- Do not read `.env`, private keys, keypairs , or secret files.  
+
+
+## Known Gotchas 
+
+## Links 
+
