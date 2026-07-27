@@ -35,4 +35,4 @@ should build the habit of anticipating a reader, not just flag gaps.
 ## Known Gotchas 
 
 ## Links 
-@write_like_a_reader.md
+Document Explaining what the Write Like a Reader process is: `docs/write_like_a_reader.md`
