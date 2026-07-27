@@ -1,3 +1,5 @@
+# CLAUDE.MD
+
 ## Project Identity
 
 **Write Like a Reader** is a demo web app that gives first-year composition
@@ -33,4 +35,4 @@ should build the habit of anticipating a reader, not just flag gaps.
 ## Known Gotchas 
 
 ## Links 
-
+@write_like_a_reader.md
