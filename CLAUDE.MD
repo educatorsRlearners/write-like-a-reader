@@ -2,13 +2,13 @@
 
 ## Project Identity
 
-**Write Like a Reader** is a demo web app that gives first-year composition
-students reader's-eye feedback on their expository essays. A student uploads a
+**Write Like a Reader** is a demo web app that gives composition students feedback 
+on their expository essays. A student uploads a
 draft; an LLM agent asks the Wh-questions (who, what, when, where, why, how) that
-a reader of *this* essay would expect it to answer, checks whether the text
-answers them, and flags the unanswered ones as inline annotations on the draft.
+a reader of *this* essay would expect it to answer, another llm checks whether the text
+answers them, and if not, flags the unanswered ones as inline annotations on the draft.
 
-Guiding principle: good expository writing anticipates its reader's questions.
+Guiding principle: good expository writing anticipates the reader's questions and answers them. 
 
 **Core loop**
 1. Student uploads a draft (typically a five-paragraph essay).
