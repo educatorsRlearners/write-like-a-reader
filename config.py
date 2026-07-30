@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-HF_TOKEN = os.environ.get("HF_TOKEN")
-MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST")
+OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "60"))
 MAX_WORDS = 3000

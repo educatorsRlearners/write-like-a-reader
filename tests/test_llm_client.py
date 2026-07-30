@@ -64,10 +64,3 @@ def test_transient_error_exhausts_retries_raises():
     with patch.object(llm_client, "_call_model", side_effect=TimeoutError("down")):
         with pytest.raises(LLMError):
             generate_json("prompt", max_transient_retries=2)
-
-
-def test_missing_token_raises_clear_error(monkeypatch):
-    monkeypatch.setattr(llm_client.config, "HF_TOKEN", None)
-    monkeypatch.setattr(llm_client, "_client", None)
-    with pytest.raises(LLMError, match="HF_TOKEN"):
-        generate_json("prompt")

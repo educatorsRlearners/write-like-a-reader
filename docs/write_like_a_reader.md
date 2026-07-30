@@ -14,7 +14,7 @@ Students return the papers/computers to author
 ## Step 5: 
 The author looks at the questions asked by their partner and categorizes them as either:
 
-- questions asking for details (who, what, when, where, how) or
+- questions asking for details (who, what, when, where, how much/many/often/long) or
 - questions asking for reasons/justification (why). 
 
 If the student has more detail questions, they know they need to provide more support/evidence in the future.
