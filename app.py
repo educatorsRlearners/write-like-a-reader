@@ -87,10 +87,14 @@ def on_select(state, evt: gr.SelectData):
     sentence_index = chunk_map[idx]
     if sentence_index is None:
         return "*(no question here)*"
-    annotation = next((a for a in result.annotations if a.sentence_index == sentence_index), None)
+    annotation = next(
+        (a for a in result.annotations if a.sentence_index == sentence_index), None
+    )
     if annotation is None:
         return "*(this sentence has no unanswered questions)*"
-    lines = [f"- **{q.category.value.title()}**: {q.text}" for q in annotation.questions]
+    lines = [
+        f"- **{q.category.value.title()}**: {q.text}" for q in annotation.questions
+    ]
     return "\n".join(lines)
 
 
@@ -100,7 +104,11 @@ def build_download(state):
         raise gr.Error("Get feedback on a draft first.")
     text = highlight.annotated_draft_text(result)
     tmp = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", delete=False, encoding="utf-8", prefix="annotated_draft_"
+        mode="w",
+        suffix=".txt",
+        delete=False,
+        encoding="utf-8",
+        prefix="annotated_draft_",
     )
     tmp.write(text)
     tmp.close()
@@ -123,7 +131,9 @@ with gr.Blocks(title="Write Like a Reader") as demo:
     )
 
     with gr.Row():
-        draft_box = gr.Textbox(label="Your draft", lines=15, placeholder="Paste your draft here...")
+        draft_box = gr.Textbox(
+            label="Your draft", lines=15, placeholder="Paste your draft here..."
+        )
         with gr.Column(scale=0, min_width=200):
             file_upload = gr.File(label="...or upload a .txt file", file_types=[".txt"])
             example_btn = gr.Button("Load example draft")
