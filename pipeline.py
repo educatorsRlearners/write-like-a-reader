@@ -1,6 +1,6 @@
 import llm_client
 import prompts
-from models import Annotation, Category, PipelineResult, Question
+from models import Annotation, Category, PipelineResult, Question, QuestionRecord
 from sentence_split import split_sentences
 
 
@@ -71,6 +71,10 @@ def run(text: str, on_progress=None) -> PipelineResult:
             unanswered = questions
         else:
             unanswered = _check_answers(questions, sentences[i + 1].text)
+
+        shown_ids = {id(q) for q in unanswered}
+        for q in questions:
+            result.question_log.append(QuestionRecord(text=q.text, shown=id(q) in shown_ids))
 
         if unanswered:
             result.annotations.append(
