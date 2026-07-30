@@ -20,15 +20,21 @@ classroom activity this automates.
    uv run python -m spacy download en_core_web_sm
    ```
 
-2. Create a `.env` file in the repo root with your Hugging Face token:
+2. Install [Ollama](https://ollama.com) and pull the model the app uses:
 
    ```
-   HF_TOKEN=hf_...
+   brew install ollama
+   ollama pull qwen2.5:3b
    ```
 
-   Get a token at https://huggingface.co/settings/tokens. The app calls the
-   Hugging Face Inference API (`huggingface_hub.InferenceClient`), so this needs
-   a network that can actually reach `huggingface.co`.
+   Make sure the Ollama service is running (`ollama serve`, or just launch the
+   Ollama app — it runs in the background) before starting the app below. The
+   app calls the local Ollama API (`http://localhost:11434` by default), so no
+   network access or API token is required.
+
+   Optional env vars (set in a `.env` file if you want to override the
+   defaults): `OLLAMA_MODEL` (default `qwen2.5:3b`), `OLLAMA_HOST` (default is
+   Ollama's own local default), `OLLAMA_TIMEOUT` (seconds, default `60`).
 
 3. Run the tests:
 
@@ -42,23 +48,12 @@ classroom activity this automates.
    uv run app.py
    ```
 
-## Known limitation of this build
+## Verifying the local model end-to-end
 
-This app was built in a sandboxed environment whose network policy blocks
-`huggingface.co` outright (not just missing credentials — the domain itself was
-unreachable). Because of that, **the live Hugging Face-backed feedback loop
-(the Questioner and Answer-checker actually calling a model) was never verified
-end-to-end** in that environment. Everything that doesn't need network access —
-sentence splitting, the retry/JSON-parsing logic in `llm_client.py`, the pipeline's
-sentence-loop logic, the highlighting/annotation logic, and the Gradio UI itself
-(including its graceful-failure behavior when the backend is unreachable) — was
-tested and confirmed working, including in a live browser.
-
-Before treating this as demo-ready, run one full pass with a real `HF_TOKEN` on a
-network that can reach `huggingface.co`:
+Before treating this as demo-ready, run one full pass with Ollama actually
+serving the model:
+- Confirm `ollama serve` is running and `ollama pull qwen2.5:3b` has finished.
 - Paste in a short (1-2 paragraph) sample essay and confirm the Questioner asks
   sensible questions and the Answer-checker's answered/unanswered calls look right.
-- Confirm `MODEL_NAME` in `config.py` (defaults to `Qwen/Qwen2.5-7B-Instruct`) is
-  still being served on HF's free Inference API tier — free-tier model
-  availability shifts over time, so this needs re-checking against HF's current
-  model list rather than assumed from the default.
+- Stop Ollama and confirm the app fails gracefully (matching the existing
+  backend-unreachable handling in `pipeline.py`) rather than crashing.

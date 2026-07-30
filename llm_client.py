@@ -3,7 +3,7 @@ import logging
 import re
 import time
 
-from huggingface_hub import InferenceClient
+import ollama
 
 import config
 
@@ -11,22 +11,17 @@ logger = logging.getLogger(__name__)
 
 _JSON_BLOCK_RE = re.compile(r"[\{\[].*[\}\]]", re.DOTALL)
 
-_client: InferenceClient | None = None
+_client: ollama.Client | None = None
 
 
 class LLMError(Exception):
     """Raised when the LLM backend cannot be reached or returns unusable output."""
 
 
-def _get_client() -> InferenceClient:
+def _get_client() -> ollama.Client:
     global _client
     if _client is None:
-        if not config.HF_TOKEN:
-            raise LLMError(
-                "HF_TOKEN is not set. Add it to a .env file to use the Hugging Face "
-                "Inference API."
-            )
-        _client = InferenceClient(model=config.MODEL_NAME, token=config.HF_TOKEN, timeout=30)
+        _client = ollama.Client(host=config.OLLAMA_HOST, timeout=config.OLLAMA_TIMEOUT)
     return _client
 
 
@@ -39,11 +34,12 @@ def _extract_json(raw: str):
 
 def _call_model(prompt: str) -> str:
     client = _get_client()
-    response = client.chat_completion(
+    response = client.chat(
+        model=config.OLLAMA_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=1024,
+        options={"num_predict": 1024},
     )
-    return response.choices[0].message.content
+    return response["message"]["content"]
 
 
 def generate_json(prompt: str, retry_prompt: str | None = None, max_transient_retries: int = 2):

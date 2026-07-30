@@ -38,8 +38,8 @@ def _status_notice(result: pipeline.PipelineResult) -> str:
     if len(result.failed_rounds) == n:
         return (
             "⚠️ Could not get feedback for any sentence — the feedback backend "
-            "was unreachable. Check that `HF_TOKEN` is set and the model is "
-            "available, then try again."
+            "was unreachable. Check that Ollama is running (`ollama serve`) and "
+            "the model has been pulled, then try again."
         )
     if 0 in result.failed_rounds:
         return (
@@ -126,8 +126,7 @@ with gr.Blocks(title="Write Like a Reader") as demo:
     gr.Markdown(
         "**Legend:** "
         f"<span style='color:{highlight.COLOR_MAP[highlight.DETAIL]}'>■ detail (who/what/when/where/how)</span> &nbsp; "
-        f"<span style='color:{highlight.COLOR_MAP[highlight.REASON]}'>■ reason (why)</span> &nbsp; "
-        f"<span style='color:{highlight.COLOR_MAP[highlight.MIXED]}'>■ both</span>"
+        f"<span style='color:{highlight.COLOR_MAP[highlight.REASON]}'>■ reason (why)</span>"
     )
 
     with gr.Row():
