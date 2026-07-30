@@ -13,8 +13,13 @@ def _get_nlp():
 
 
 def split_sentences(text: str) -> list[Sentence]:
+    """
+    Splits the text into a list of sentences
+    """
+
     doc = _get_nlp()(text)
-    return [
+
+    sentences = [
         Sentence(
             index=i,
             text=span.text,
@@ -23,3 +28,5 @@ def split_sentences(text: str) -> list[Sentence]:
         )
         for i, span in enumerate(doc.sents)
     ]
+
+    return sentences
