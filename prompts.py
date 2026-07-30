@@ -23,12 +23,19 @@ in the context of everything read so far.
 
 Write 3 to 4 short questions that YOU, the reader, want answered right now
 because of the sentence you just read. Each question must be one of:
-- a "detail" question (who, what, when, where, how) asking for missing
+- a "detail" question (who, what, when, where, how much/many/often/long) asking for missing
   specifics or evidence
 - a "reason" question (why) asking for missing justification or reasoning
 
 Only ask questions a real reader would actually have at this point in the
 text -- do not invent questions about things the essay has already answered.
+
+For example, if a writer wrote, 'Social media has changed the way people communicate.' Some 
+valid questions would be: 
+    - How do you know? 
+    - Who says that? 
+    - When did social media change the way people communicate? 
+    - How did it change the way people communicate? For better or worse? 
 
 Respond with ONLY a JSON object of this exact form, no other text:
 {{"questions": [{{"text": "...", "category": "detail"|"reason"}}, ...]}}"""
@@ -46,7 +53,7 @@ Here is the very next sentence of the essay:
 
 For each question, decide whether this next sentence, on its own, answers it.
 Only mark a question answered if this sentence actually contains that answer --
-do not assume information from elsewhere in the essay.
+do not assume information from later in the essay.
 
 Respond with ONLY a JSON array of this exact form, no other text, with one
 entry per question in the same order:
