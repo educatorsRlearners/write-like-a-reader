@@ -2,21 +2,15 @@ from models import Category, PipelineResult
 
 DETAIL = "detail"
 REASON = "reason"
-MIXED = "mixed"
 
 COLOR_MAP = {
     DETAIL: "#3b82f6",  # blue: missing support/evidence
     REASON: "#f59e0b",  # amber: missing justification
-    MIXED: "#a855f7",  # purple: both
 }
 
 
 def _label_for(categories: set[Category]) -> str:
-    has_detail = Category.DETAIL in categories
-    has_reason = Category.REASON in categories
-    if has_detail and has_reason:
-        return MIXED
-    return DETAIL if has_detail else REASON
+    return DETAIL if Category.DETAIL in categories else REASON
 
 
 def to_highlighted_text(result: PipelineResult) -> list[tuple[str, str | None]]:

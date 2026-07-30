@@ -1,4 +1,4 @@
-from highlight import DETAIL, MIXED, REASON, annotated_draft_text, chunk_sentence_indices, to_highlighted_text
+from highlight import DETAIL, REASON, annotated_draft_text, chunk_sentence_indices, to_highlighted_text
 from models import Annotation, Category, PipelineResult, Question
 from sentence_split import split_sentences
 
@@ -47,7 +47,7 @@ def test_reason_only_annotation_labeled_reason():
     assert labels[sentences[0].text] == REASON
 
 
-def test_mixed_categories_labeled_mixed():
+def test_mixed_categories_labeled_detail_precedence():
     text = "The cat sat. It was tired."
     sentences = split_sentences(text)
     annotation = Annotation(
@@ -62,7 +62,7 @@ def test_mixed_categories_labeled_mixed():
     result = _make_result(text, [annotation])
     chunks = to_highlighted_text(result)
     labels = {c: label for c, label in chunks if label is not None}
-    assert labels[sentences[0].text] == MIXED
+    assert labels[sentences[0].text] == DETAIL
 
 
 def test_annotated_draft_text_inserts_notes_after_correct_sentence():

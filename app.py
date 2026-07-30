@@ -126,8 +126,7 @@ with gr.Blocks(title="Write Like a Reader") as demo:
     gr.Markdown(
         "**Legend:** "
         f"<span style='color:{highlight.COLOR_MAP[highlight.DETAIL]}'>■ detail (who/what/when/where/how)</span> &nbsp; "
-        f"<span style='color:{highlight.COLOR_MAP[highlight.REASON]}'>■ reason (why)</span> &nbsp; "
-        f"<span style='color:{highlight.COLOR_MAP[highlight.MIXED]}'>■ both</span>"
+        f"<span style='color:{highlight.COLOR_MAP[highlight.REASON]}'>■ reason (why)</span>"
     )
 
     with gr.Row():
