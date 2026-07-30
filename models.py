@@ -29,9 +29,16 @@ class Annotation:
     questions: list[Question]
 
 
+@dataclass(frozen=True)
+class QuestionRecord:
+    text: str
+    shown: bool
+
+
 @dataclass
 class PipelineResult:
     text: str
     sentences: list[Sentence]
     annotations: list[Annotation] = field(default_factory=list)
     failed_rounds: list[int] = field(default_factory=list)
+    question_log: list[QuestionRecord] = field(default_factory=list)

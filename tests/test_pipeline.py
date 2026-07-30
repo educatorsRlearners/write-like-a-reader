@@ -59,6 +59,11 @@ def test_answered_question_is_dropped():
     assert all(a.sentence_index != 0 for a in result.annotations)
     # sentence 1 is the last sentence -> auto-unanswered
     assert any(a.sentence_index == 1 for a in result.annotations)
+    # both generated questions are logged, in order, with correct shown flags
+    assert [(r.text, r.shown) for r in result.question_log] == [
+        ("Why was it tired?", False),
+        ("What happened next?", True),
+    ]
 
 
 def test_unanswered_question_becomes_annotation():

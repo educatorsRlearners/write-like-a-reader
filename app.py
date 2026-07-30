@@ -1,15 +1,20 @@
+import logging
 import tempfile
 
 import gradio as gr
 
 import highlight
 import pipeline
+import storage
 from config import MAX_WORDS
+
+logger = logging.getLogger(__name__)
 
 EXAMPLE_DRAFT = (
     "Social media has changed the way people communicate. Many students use it "
     "every day. Some teachers think it is a distraction. The school board is "
-    "considering a new policy. This would help students focus better."
+    "considering a new policy. This would help students focus better by "
+    "resisting the siren's call of social media."
 )
 
 
@@ -58,6 +63,12 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
     if not draft_text or not draft_text.strip():
         raise gr.Error("Please enter or upload a draft first.")
 
+    essay_id = None
+    try:
+        essay_id = storage.save_essay(draft_text)
+    except Exception:
+        logger.warning("Failed to save essay to storage", exc_info=True)
+
     notice = _word_count_notice(draft_text)
 
     def on_progress(i, n):
@@ -67,6 +78,12 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
         result = pipeline.run(draft_text, on_progress=on_progress)
     except Exception as exc:
         raise gr.Error(f"Feedback run failed unexpectedly: {exc}") from exc
+
+    if essay_id is not None:
+        try:
+            storage.save_questions(essay_id, result.question_log)
+        except Exception:
+            logger.warning("Failed to save questions to storage", exc_info=True)
 
     status = _status_notice(result)
     full_notice = "\n\n".join(part for part in (notice, status) if part)
@@ -122,6 +139,11 @@ with gr.Blocks(title="Write Like a Reader") as demo:
         "sentence and flag the questions it still has — the same way a human "
         "peer reviewer would. **It won't fix anything for you** — the point is "
         "for you to answer those questions yourself in your revision."
+    )
+    gr.Markdown(
+        "*We save the drafts you submit here in order to improve this "
+        "service going forward. Don't include personal information you "
+        "wouldn't want retained.*"
     )
     gr.Markdown(
         "**Legend:** "
