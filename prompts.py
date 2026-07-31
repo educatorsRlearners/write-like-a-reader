@@ -1,7 +1,6 @@
 QUESTIONER_RETRY = (
     "Your previous response was not valid JSON. Respond with ONLY a JSON object "
-    'of the form {"questions": [{"text": "...", "category": "detail"|"reason"}]}, '
-    "no other text."
+    'of the form {"questions": ["...", "..."]}, no other text.'
 )
 
 CHECKER_RETRY = (
@@ -21,17 +20,14 @@ in the context of everything read so far.
 
 {read_so_far}
 
-Write 3 to 4 short questions that YOU, the reader, want answered right now
-because of the sentence you just read. Each question must be one of:
-- a "detail" question (who, what, when, where, how) asking for missing
-  specifics or evidence
-- a "reason" question (why) asking for missing justification or reasoning
+Write 3 to 4 short who/what/when/where/why/how questions that YOU, the reader,
+want answered right now because of the sentence you just read.
 
 Only ask questions a real reader would actually have at this point in the
 text -- do not invent questions about things the essay has already answered.
 
 Respond with ONLY a JSON object of this exact form, no other text:
-{{"questions": [{{"text": "...", "category": "detail"|"reason"}}, ...]}}"""
+{{"questions": ["...", ...]}}"""
 
 
 def build_checker_prompt(questions: list[str], next_sentence: str) -> str:

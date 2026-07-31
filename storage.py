@@ -15,18 +15,15 @@ def init_db() -> None:
     if dirname:
         os.makedirs(dirname, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS essays (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 text TEXT NOT NULL,
                 word_count INTEGER NOT NULL,
                 created_at TEXT NOT NULL
             )
-            """
-        )
-        conn.execute(
-            """
+            """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS questions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 essay_id INTEGER NOT NULL REFERENCES essays(id),
@@ -34,8 +31,7 @@ def init_db() -> None:
                 text TEXT NOT NULL,
                 shown INTEGER NOT NULL
             )
-            """
-        )
+            """)
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_questions_essay_id ON questions(essay_id)"
         )

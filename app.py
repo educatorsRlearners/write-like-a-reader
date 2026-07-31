@@ -89,7 +89,8 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
     full_notice = "\n\n".join(part for part in (notice, status) if part)
     chunks = highlight.to_highlighted_text(result)
     chunk_map = highlight.chunk_sentence_indices(result)
-    return (result, chunk_map), chunks, full_notice, ""
+    download_path = _write_annotated_draft(result)
+    return (result, chunk_map), chunks, full_notice, "", download_path
 
 
 def on_select(state, evt: gr.SelectData):
@@ -109,16 +110,11 @@ def on_select(state, evt: gr.SelectData):
     )
     if annotation is None:
         return "*(this sentence has no unanswered questions)*"
-    lines = [
-        f"- **{q.category.value.title()}**: {q.text}" for q in annotation.questions
-    ]
+    lines = [f"- {q.text}" for q in annotation.questions]
     return "\n".join(lines)
 
 
-def build_download(state):
-    result, _chunk_map = state
-    if result is None:
-        raise gr.Error("Get feedback on a draft first.")
+def _write_annotated_draft(result: pipeline.PipelineResult) -> str:
     text = highlight.annotated_draft_text(result)
     tmp = tempfile.NamedTemporaryFile(
         mode="w",
@@ -135,20 +131,16 @@ def build_download(state):
 with gr.Blocks(title="Write Like a Reader") as demo:
     gr.Markdown(
         "# Write Like a Reader\n"
-        "Paste or upload your draft. An AI reader will go through it sentence by "
-        "sentence and flag the questions it still has — the same way a human "
-        "peer reviewer would. **It won't fix anything for you** — the point is "
-        "for you to answer those questions yourself in your revision."
+        "Paste or upload a paragraph or two of your writing. An AI reader will "
+        "go through it sentence by sentence and flag the questions it still "
+        "has — the same way a human peer reviewer would. **It won't fix "
+        "anything for you** — the point is for you to answer those questions "
+        "yourself in your revision."
     )
     gr.Markdown(
         "*We save the drafts you submit here in order to improve this "
         "service going forward. Don't include personal information you "
         "wouldn't want retained.*"
-    )
-    gr.Markdown(
-        "**Legend:** "
-        f"<span style='color:{highlight.COLOR_MAP[highlight.DETAIL]}'>■ detail (who/what/when/where/how)</span> &nbsp; "
-        f"<span style='color:{highlight.COLOR_MAP[highlight.REASON]}'>■ reason (why)</span>"
     )
 
     with gr.Row():
@@ -166,10 +158,10 @@ with gr.Blocks(title="Write Like a Reader") as demo:
         label="Annotated draft",
         color_map=highlight.COLOR_MAP,
         show_legend=False,
+        show_inline_category=False,
     )
     detail_panel = gr.Markdown(label="Selected sentence's unanswered questions")
-    download_btn = gr.Button("Download annotated draft")
-    download_file = gr.File(label="Download", visible=True)
+    download_btn = gr.DownloadButton("Download annotated draft")
 
     result_state = gr.State((None, None))
 
@@ -179,11 +171,10 @@ with gr.Blocks(title="Write Like a Reader") as demo:
     feedback_btn.click(
         get_feedback,
         inputs=draft_box,
-        outputs=[result_state, highlighted, notice_md, detail_panel],
+        outputs=[result_state, highlighted, notice_md, detail_panel, download_btn],
     )
 
     highlighted.select(on_select, inputs=result_state, outputs=detail_panel)
-    download_btn.click(build_download, inputs=result_state, outputs=download_file)
 
 demo.queue()
 
