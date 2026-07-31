@@ -49,7 +49,12 @@ def save_essay(text: str) -> int:
             "INSERT INTO essays (text, word_count, created_at) VALUES (?, ?, ?)",
             (text, len(text.split()), datetime.now(timezone.utc).isoformat()),
         )
-        return cursor.lastrowid
+
+        rowid = cursor.lastrowid
+
+        assert rowid is not None
+
+        return rowid
 
 
 def save_questions(essay_id: int, records: list) -> None:
