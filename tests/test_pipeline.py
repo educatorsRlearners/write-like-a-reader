@@ -6,7 +6,7 @@ from pipeline import run
 
 
 def _questioner_response(*texts):
-    return {"questions": [{"text": t, "category": "detail"} for t in texts]}
+    return {"questions": list(texts)}
 
 
 def _checker_response(*answered_flags):
@@ -121,10 +121,10 @@ def test_malformed_question_entries_are_skipped():
         "questioner": [
             {
                 "questions": [
-                    {"text": "Valid one?", "category": "reason"},
-                    {"text": "Missing category"},
-                    {"category": "detail"},
-                    {"text": "Bad category?", "category": "nonsense"},
+                    "Valid one?",
+                    "",
+                    {"text": "Not a string"},
+                    None,
                 ]
             }
         ],

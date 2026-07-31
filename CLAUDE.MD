@@ -3,24 +3,23 @@
 ## Project Identity
 
 **Write Like a Reader** is a demo web app that gives composition students feedback 
-on their expository essays. A student uploads a
-draft; an LLM agent asks the Wh-questions (who, what, when, where, why, how) that
+on their expository writing.  A student uploads a paragraph or two from their writing; 
+an LLM agent asks the Wh-questions (who, what, when, where, why, how many/often/long/frequent/much/many/etc) that
 a reader of *this* essay would expect it to answer, another llm checks whether the text
 answers them, and if not, flags the unanswered ones as inline annotations on the draft.
 
 Guiding principle: good expository writing anticipates the reader's questions and answers them. 
 
 **Core loop**
-1. Student uploads a draft (typically a five-paragraph essay).
-2. Agent generates the reader questions relevant to this piece — not a fixed
-   six every time; the relevant subset depends on the essay.
+1. Student uploads a paragraph from their expository essay.
+2. Agent generates the reader questions relevant to this piece — not a number; the relevant subset depends on the essay.
 3. Agent searches the text for each answer.
 4. Answered questions are dropped silently; unanswered ones become inline
    annotations tied to the relevant passage.
 
 **Users:** English 101/102 students, uploading their own drafts. Instructors
 recommend the tool but aren't direct users. It's a learning tool — feedback
-should build the habit of anticipating a reader, not just flag gaps.
+should build the habit of anticipating what a reader would ask, not just flag gaps.
 
 **Stack:** Python + Gradio (`HighlightedText` for the annotation layer).
 

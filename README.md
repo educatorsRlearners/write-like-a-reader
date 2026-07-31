@@ -1,12 +1,11 @@
 # write-like-a-reader
 
-A demo app that gives composition students feedback on their expository essays.
-A student pastes or uploads a draft; an LLM agent (the "Questioner") asks the
+A demo app that gives composition students feedback on their expository writing.
+A student pastes or uploads a paragraph or two; an LLM agent (the "Questioner") asks the
 Wh-questions a reader would have after each sentence, and a second LLM agent (the
 "Answer-checker") checks whether the very next sentence answers them. Unanswered
-questions are highlighted inline on the draft, color-coded by category (detail vs.
-reason), so the student can revise their own draft — the tool flags gaps, it
-doesn't fix them.
+questions are highlighted inline on the draft, so the student can revise their own
+draft — the tool flags gaps, it doesn't fix them.
 
 See `CLAUDE.MD` for the project brief and `docs/write_like_a_reader.md` for the
 classroom activity this automates.

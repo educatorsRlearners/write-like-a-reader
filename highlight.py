@@ -1,16 +1,14 @@
-from models import Category, PipelineResult
+from models import PipelineResult
 
-DETAIL = "detail"
-REASON = "reason"
+SENTENCE = "sentence"
 
-COLOR_MAP = {
-    DETAIL: "#3b82f6",  # blue: missing support/evidence
-    REASON: "#f59e0b",  # amber: missing justification
-}
-
-
-def _label_for(categories: set[Category]) -> str:
-    return DETAIL if Category.DETAIL in categories else REASON
+# Every sentence gets this single label so gr.HighlightedText keeps each one
+# individually clickable (Gradio only fires select events on labeled tokens).
+# The literal string "transparent" is the one color value Gradio's frontend
+# treats as truly transparent (see gradio's correct_color_map JS helper) --
+# anything else (e.g. an rgba() string) gets parsed as an opaque color and
+# falls back to a visible default, defeating the point.
+COLOR_MAP = {SENTENCE: "transparent"}
 
 
 def to_highlighted_text(result: PipelineResult) -> list[tuple[str, str | None]]:
@@ -18,20 +16,17 @@ def to_highlighted_text(result: PipelineResult) -> list[tuple[str, str | None]]:
 
     Chunks cover `result.text` contiguously and in order, including the
     unlabeled gaps between sentences (whitespace, etc.), so concatenating all
-    chunk texts reproduces the original draft exactly.
+    chunk texts reproduces the original draft exactly. Every sentence gets the
+    same `SENTENCE` label (rendered transparent via `COLOR_MAP`) so the whole
+    draft stays clickable without singling any sentence out visually.
     """
     text = result.text
-    label_by_sentence: dict[int, str] = {
-        annotation.sentence_index: _label_for({q.category for q in annotation.questions})
-        for annotation in result.annotations
-    }
-
     chunks: list[tuple[str, str | None]] = []
     cursor = 0
     for sentence in result.sentences:
         if sentence.start_char > cursor:
-            chunks.append((text[cursor:sentence.start_char], None))
-        chunks.append((sentence.text, label_by_sentence.get(sentence.index)))
+            chunks.append((text[cursor : sentence.start_char], None))
+        chunks.append((sentence.text, SENTENCE))
         cursor = sentence.end_char
     if cursor < len(text):
         chunks.append((text[cursor:], None))
@@ -62,11 +57,11 @@ def annotated_draft_text(result: PipelineResult) -> str:
     pieces: list[str] = []
     cursor = 0
     for sentence in result.sentences:
-        pieces.append(text[cursor:sentence.end_char])
+        pieces.append(text[cursor : sentence.end_char])
         cursor = sentence.end_char
         annotation = annotation_by_sentence.get(sentence.index)
         if annotation:
             for question in annotation.questions:
-                pieces.append(f" [{question.category.value.upper()}: {question.text}]")
+                pieces.append(f" [{question.text}]")
     pieces.append(text[cursor:])
     return "".join(pieces)

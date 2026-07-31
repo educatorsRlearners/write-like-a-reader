@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -10,15 +9,9 @@ class Sentence:
     end_char: int
 
 
-class Category(str, Enum):
-    DETAIL = "detail"
-    REASON = "reason"
-
-
 @dataclass(frozen=True)
 class Question:
     text: str
-    category: Category
 
 
 @dataclass(frozen=True)

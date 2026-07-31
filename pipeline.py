@@ -1,6 +1,6 @@
 import llm_client
 import prompts
-from models import Annotation, Category, PipelineResult, Question, QuestionRecord
+from models import Annotation, PipelineResult, Question, QuestionRecord
 from sentence_split import split_sentences
 
 
@@ -9,12 +9,8 @@ def _parse_questions(data) -> list[Question]:
         return []
     questions = []
     for item in data.get("questions", []):
-        if not isinstance(item, dict):
-            continue
-        try:
-            questions.append(Question(text=item["text"], category=Category(item["category"])))
-        except (KeyError, ValueError):
-            continue
+        if isinstance(item, str) and item.strip():
+            questions.append(Question(text=item))
     return questions
 
 
