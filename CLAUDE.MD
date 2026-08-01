@@ -11,7 +11,7 @@ answers them, and if not, flags the unanswered ones as inline annotations on the
 Guiding principle: good expository writing anticipates the reader's questions and answers them. 
 
 **Core loop**
-1. Student uploads a paragraph from their expository essay.
+1. Student uploads a their from their expository essay.
 2. Agent generates the reader questions relevant to this piece — not a number; the relevant subset depends on the essay.
 3. Agent searches the text for each answer.
 4. Answered questions are dropped silently; unanswered ones become inline
@@ -27,7 +27,6 @@ should build the habit of anticipating what a reader would ask, not just flag ga
 ~3000 words for now so don't hard-code the ceiling.
 
 ## Hard Stops
-- Do not install dependencies without explicit approval. 
 - Do not read `.env`, private keys, keypairs , or secret files.  
 
 
