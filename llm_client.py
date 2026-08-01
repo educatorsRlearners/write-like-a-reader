@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import time
+from typing import Callable
 
 import ollama
 
@@ -32,33 +33,54 @@ def _extract_json(raw: str):
     return json.loads(match.group(0))
 
 
-def _call_model(prompt: str) -> str:
+def _call_model(prompt: str) -> dict:
+    """Call the model and return the full Ollama chat response.
+
+    Returns the whole response (not just the message content) so callers can
+    also read `prompt_eval_count`/`eval_count` for token-usage tracking.
+    """
     client = _get_client()
-    response = client.chat(
+    return client.chat(
         model=config.OLLAMA_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        options={"num_predict": 1024},
+        options={"num_predict": 2048, "num_ctx": 8192},
     )
-    return response["message"]["content"]
 
 
-def generate_json(prompt: str, retry_prompt: str | None = None, max_transient_retries: int = 2):
+def generate_json(
+    prompt: str,
+    retry_prompt: str | None = None,
+    max_transient_retries: int = 2,
+    on_attempt: Callable[[], None] | None = None,
+    on_result: Callable[[int | None, int | None], None] | None = None,
+):
     """Call the model and parse its output as JSON.
 
     Retries transient backend errors (timeouts, rate limits, cold starts) up to
     `max_transient_retries` times with a short backoff. If the model responds but
     the output isn't valid JSON, retries once with `retry_prompt` (a stricter
     follow-up), then raises LLMError so the caller can skip that round gracefully.
+
+    `on_attempt`, if given, is invoked once per retry actually taken (transient
+    backoff retry or JSON-parse retry), never on a clean first-try success.
+    `on_result`, if given, is invoked once on success with
+    `(prompt_tokens, completion_tokens)` -- Ollama's `prompt_eval_count`/
+    `eval_count` from the response that ultimately succeeded, or `(None, None)`
+    if the backend didn't report them.
     """
     raw = None
+    response: dict | None = None
     last_error: Exception | None = None
     for attempt in range(max_transient_retries + 1):
         try:
-            raw = _call_model(prompt)
+            response = _call_model(prompt)
+            raw = response["message"]["content"]
             break
         except Exception as exc:
             last_error = exc
             if attempt < max_transient_retries:
+                if on_attempt is not None:
+                    on_attempt()
                 logger.warning("LLM call failed (attempt %d), retrying: %s", attempt + 1, exc)
                 time.sleep(2**attempt)
             continue
@@ -66,12 +88,22 @@ def generate_json(prompt: str, retry_prompt: str | None = None, max_transient_re
         raise LLMError(f"LLM backend unreachable after retries: {last_error}") from last_error
 
     try:
-        return _extract_json(raw)
+        data = _extract_json(raw)
     except (ValueError, json.JSONDecodeError) as exc:
         if retry_prompt is None:
             raise LLMError(f"Could not parse JSON from LLM output: {exc}") from exc
         try:
-            raw = _call_model(retry_prompt)
-            return _extract_json(raw)
+            if on_attempt is not None:
+                on_attempt()
+            response = _call_model(retry_prompt)
+            raw = response["message"]["content"]
+            data = _extract_json(raw)
         except Exception as retry_exc:
             raise LLMError(f"Could not parse JSON from LLM output after retry: {retry_exc}") from retry_exc
+
+    if on_result is not None:
+        prompt_tokens = response.get("prompt_eval_count") if response else None
+        completion_tokens = response.get("eval_count") if response else None
+        on_result(prompt_tokens, completion_tokens)
+
+    return data

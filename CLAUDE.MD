@@ -23,8 +23,8 @@ should build the habit of anticipating what a reader would ask, not just flag ga
 
 **Stack:** Python + Gradio (`HighlightedText` for the annotation layer).
 
-**Scope:** Demo / proof-of-concept, internal and investor-facing. Input cap
-~3000 words for now so don't hard-code the ceiling.
+**Scope:** Demo / proof-of-concept, internal and investor-facing. Input caps
+~1000 words / 20 sentences for now so don't hard-code the ceiling.
 
 ## Hard Stops
 - Do not read `.env`, private keys, keypairs , or secret files.  

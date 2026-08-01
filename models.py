@@ -35,3 +35,4 @@ class PipelineResult:
     annotations: list[Annotation] = field(default_factory=list)
     failed_rounds: list[int] = field(default_factory=list)
     question_log: list[QuestionRecord] = field(default_factory=list)
+    essay_id: int | None = None

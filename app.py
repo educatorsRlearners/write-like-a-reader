@@ -5,8 +5,9 @@ import gradio as gr
 
 import highlight
 import pipeline
+import sentence_split
 import storage
-from config import MAX_WORDS
+from config import MAX_SENTENCES, MAX_WORDS
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,17 @@ def _word_count_notice(text: str) -> str:
             f"⚠️ This draft is {word_count} words, over the ~{MAX_WORDS}-word soft "
             "cap. You can still get feedback, but a draft this long can take "
             "several minutes and may hit rate limits."
+        )
+    return ""
+
+
+def _sentence_count_notice(sentences: list) -> str:
+    n = len(sentences)
+    if n > MAX_SENTENCES:
+        return (
+            f"⚠️ This draft has {n} sentences, over the ~{MAX_SENTENCES}-sentence "
+            "soft cap. You can still get feedback, but a draft this long can take "
+            "longer and may hit rate limits."
         )
     return ""
 
@@ -69,13 +81,15 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
     except Exception:
         logger.warning("Failed to save essay to storage", exc_info=True)
 
-    notice = _word_count_notice(draft_text)
+    word_notice = _word_count_notice(draft_text)
+    sentence_notice = _sentence_count_notice(sentence_split.split_sentences(draft_text))
 
-    def on_progress(i, n):
-        progress((i, n), desc=f"Reading sentence {i + 1} of {n}")
+    def on_progress(step, total):
+        desc = "Reading the essay..." if step == 0 else "Checking answers..."
+        progress((step, total), desc=desc)
 
     try:
-        result = pipeline.run(draft_text, on_progress=on_progress)
+        result = pipeline.run(draft_text, essay_id=essay_id, on_progress=on_progress)
     except Exception as exc:
         raise gr.Error(f"Feedback run failed unexpectedly: {exc}") from exc
 
@@ -86,32 +100,45 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
             logger.warning("Failed to save questions to storage", exc_info=True)
 
     status = _status_notice(result)
-    full_notice = "\n\n".join(part for part in (notice, status) if part)
+    full_notice = "\n\n".join(part for part in (word_notice, sentence_notice, status) if part)
     chunks = highlight.to_highlighted_text(result)
     chunk_map = highlight.chunk_sentence_indices(result)
     download_path = _write_annotated_draft(result)
-    return (result, chunk_map), chunks, full_notice, "", download_path
+    return (result, chunk_map), chunks, full_notice, "", None, download_path
 
 
 def on_select(state, evt: gr.SelectData):
     result, chunk_map = state
     if result is None or evt.index is None:
-        return ""
+        return "", None
     idx = evt.index
     if isinstance(idx, (tuple, list)):
         idx = idx[0]
     if idx >= len(chunk_map):
-        return ""
+        return "", None
     sentence_index = chunk_map[idx]
     if sentence_index is None:
-        return "*(no question here)*"
+        return "*(no question here)*", None
     annotation = next(
         (a for a in result.annotations if a.sentence_index == sentence_index), None
     )
     if annotation is None:
-        return "*(this sentence has no unanswered questions)*"
+        return "*(this sentence has no unanswered questions)*", None
     lines = [f"- {q.text}" for q in annotation.questions]
-    return "\n".join(lines)
+    selection = (result.essay_id, sentence_index) if result.essay_id is not None else None
+    return "\n".join(lines), selection
+
+
+def _rate(selection, rating: str):
+    if selection is None:
+        return gr.update(value="*(select a flagged sentence first)*")
+    essay_id, sentence_index = selection
+    try:
+        storage.save_feedback(essay_id, sentence_index, rating)
+    except Exception:
+        logger.warning("Failed to save feedback", exc_info=True)
+        return gr.update(value="*(couldn't save — try again)*")
+    return gr.update(value="Thanks!" if rating == "good" else "Noted.")
 
 
 def _write_annotated_draft(result: pipeline.PipelineResult) -> str:
@@ -161,9 +188,14 @@ with gr.Blocks(title="Write Like a Reader") as demo:
         show_inline_category=False,
     )
     detail_panel = gr.Markdown(label="Selected sentence's unanswered questions")
+    with gr.Row():
+        good_btn = gr.Button("👍 Good questions", size="sm", scale=0)
+        bad_btn = gr.Button("👎 Bad questions", size="sm", scale=0)
+    feedback_status_md = gr.Markdown(scale=0)
     download_btn = gr.DownloadButton("Download annotated draft")
 
     result_state = gr.State((None, None))
+    current_selection_state = gr.State(None)  # (essay_id, sentence_index) | None
 
     file_upload.upload(load_txt, inputs=file_upload, outputs=draft_box)
     example_btn.click(lambda: EXAMPLE_DRAFT, outputs=draft_box)
@@ -171,10 +203,32 @@ with gr.Blocks(title="Write Like a Reader") as demo:
     feedback_btn.click(
         get_feedback,
         inputs=draft_box,
-        outputs=[result_state, highlighted, notice_md, detail_panel, download_btn],
+        outputs=[
+            result_state,
+            highlighted,
+            notice_md,
+            detail_panel,
+            current_selection_state,
+            download_btn,
+        ],
     )
 
-    highlighted.select(on_select, inputs=result_state, outputs=detail_panel)
+    highlighted.select(
+        on_select,
+        inputs=result_state,
+        outputs=[detail_panel, current_selection_state],
+    )
+
+    good_btn.click(
+        lambda selection: _rate(selection, "good"),
+        inputs=[current_selection_state],
+        outputs=[feedback_status_md],
+    )
+    bad_btn.click(
+        lambda selection: _rate(selection, "bad"),
+        inputs=[current_selection_state],
+        outputs=[feedback_status_md],
+    )
 
 demo.queue()
 
