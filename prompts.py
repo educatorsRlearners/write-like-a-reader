@@ -1,56 +1,79 @@
 QUESTIONER_RETRY = (
     "Your previous response was not valid JSON. Respond with ONLY a JSON object "
-    'of the form {"questions": ["...", "..."]}, no other text.'
+    'mapping each sentence index (as a string) to an array of question strings, '
+    'of the form {"0": ["...", "..."], "1": [], ...}, no other text.'
 )
 
 CHECKER_RETRY = (
-    "Your previous response was not valid JSON. Respond with ONLY a JSON array "
-    'of the form [{"question": "...", "answered": true|false}], no other text.'
+    "Your previous response was not valid JSON. Respond with ONLY a JSON object "
+    'mapping each sentence index (as a string) to an array of true/false values, '
+    'one per question in that sentence\'s list, of the form '
+    '{"0": [true, false], "1": [true]}, no other text.'
 )
 
+_FORMATTING_RULES = """Formatting rules for every question you write:
+- Start the question with its category as a literal prefix, followed by a
+  colon and a space: "Who:", "What:", "When:", "Where:", "Why:", or
+  "How many/much/long/often:" (pick whichever "how" variant actually fits --
+  e.g. "How many:", "How long:", "How often:" -- rather than always writing
+  the full slash-separated list). Use the prefix that matches what the
+  question is actually asking about, not just the first Wh-word that comes
+  to mind.
+- Keep each question to three sentences or fewer. One sentence is fine and
+  often best; use a second or third only when necessary framing (e.g. "X
+  says Y. Where's that from?")."""
 
-def build_questioner_prompt(sentences_so_far: list[str], current_index: int) -> str:
-    read_so_far = "\n".join(
-        f'{"-> " if i == current_index else "   "}{i + 1}. {s}'
-        for i, s in enumerate(sentences_so_far)
-    )
+
+def build_batch_questioner_prompt(sentences: list[str]) -> str:
+    numbered = "\n".join(f"{i}. {s}" for i, s in enumerate(sentences))
     return f"""You are a curious, literal-minded reader of a student essay, reading it one
-sentence at a time. You have just read the sentence marked with "->" below,
-in the context of everything read so far.
+sentence at a time. Here is the whole essay, one sentence per line, numbered
+starting at 0:
 
-{read_so_far}
+{numbered}
 
-Write 3 to 4 short who/what/when/where/why/how questions that YOU, the reader,
-want answered right now because of the sentence you just read.
+For EACH sentence index above, write 3 to 4 short who/what/when/where/why/how
+questions that YOU, the reader, would want answered right after reading that
+sentence, given everything you'd have read up through that point (sentences
+0 through that index). Only ask questions a real reader would actually have
+at that point in the text -- do not invent questions about things the essay
+has already answered earlier. If a sentence raises no new reader questions,
+its array can be empty.
 
-Only ask questions a real reader would actually have at this point in the
-text -- do not invent questions about things the essay has already answered.
+{_FORMATTING_RULES}
 
-For example, if a writer wrote, 'Social media has changed the way people communicate.' Some 
-valid questions would be: 
-    - How do you know? 
-    - Who says that? 
-    - When did social media change the way people communicate? 
-    - How did it change the way people communicate? For better or worse? 
+For example, if a writer wrote, 'Social media has changed the way people
+communicate.' Some valid questions would be:
+    - How: How did it change the way people communicate? For better or worse?
+    - Who: Who says that?
+    - When: When did social media change the way people communicate?
 
-Respond with ONLY a JSON object of this exact form, no other text:
-{{"questions": ["...", ...]}}"""
+Respond with ONLY a JSON object mapping each sentence index (as a string) to
+an array of question strings, of this exact form, no other text:
+{{"0": ["...", ...], "1": ["...", ...], ...}}"""
 
 
-def build_checker_prompt(questions: list[str], next_sentence: str) -> str:
-    numbered_questions = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(questions))
-    return f"""A reader asked the following questions after reading a sentence in a
-student essay:
+def build_batch_checker_prompt(question_map: dict[int, list[str]], sentences: list[str]) -> str:
+    sections = []
+    for i in sorted(question_map):
+        questions = question_map[i]
+        if not questions:
+            continue
+        numbered_questions = "\n".join(f"    {j}. {q}" for j, q in enumerate(questions))
+        sections.append(
+            f'Sentence {i} questions (checked against the next sentence, '
+            f'"{sentences[i + 1]}"):\n{numbered_questions}'
+        )
+    joined = "\n\n".join(sections)
+    return f"""A reader asked the following questions after reading certain sentences in a
+student essay. For each sentence's questions, decide whether the sentence
+listed right after it, on its own, answers each question. Only mark a
+question answered if that next sentence actually contains that answer -- do
+not assume information from elsewhere in the essay.
 
-{numbered_questions}
+{joined}
 
-Here is the very next sentence of the essay:
-"{next_sentence}"
-
-For each question, decide whether this next sentence, on its own, answers it.
-Only mark a question answered if this sentence actually contains that answer --
-do not assume information from later in the essay.
-
-Respond with ONLY a JSON array of this exact form, no other text, with one
-entry per question in the same order:
-[{{"question": "...", "answered": true|false}}, ...]"""
+Respond with ONLY a JSON object mapping each sentence index (as a string) to
+an array of true/false values, one per question in that sentence's list, in
+the same order as listed above, of this exact form, no other text:
+{{"0": [true, false], "1": [true], ...}}"""

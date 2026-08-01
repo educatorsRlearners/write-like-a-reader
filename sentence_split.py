@@ -1,32 +1,35 @@
-import spacy
+import pysbd
 
 from models import Sentence
 
-_nlp = None
+_segmenter = None
 
 
-def _get_nlp():
-    global _nlp
-    if _nlp is None:
-        _nlp = spacy.load("en_core_web_sm", exclude=["ner", "lemmatizer"])
-    return _nlp
+def _get_segmenter():
+    global _segmenter
+    if _segmenter is None:
+        _segmenter = pysbd.Segmenter(language="en", clean=False, char_span=True)
+    return _segmenter
 
 
 def split_sentences(text: str) -> list[Sentence]:
     """
     Splits the text into a list of sentences
     """
+    if not text:
+        return []
 
-    doc = _get_nlp()(text)
+    spans = _get_segmenter().segment(text)
 
-    sentences = [
-        Sentence(
-            index=i,
-            text=span.text,
-            start_char=span.start_char,
-            end_char=span.end_char,
+    sentences = []
+    for i, span in enumerate(spans):
+        stripped = span.sent.rstrip()
+        sentences.append(
+            Sentence(
+                index=i,
+                text=stripped,
+                start_char=span.start,
+                end_char=span.start + len(stripped),
+            )
         )
-        for i, span in enumerate(doc.sents)
-    ]
-
     return sentences

@@ -82,3 +82,114 @@ def test_save_questions_keeps_essays_separate(tmp_path, monkeypatch):
         rows = conn.execute("SELECT essay_id, text FROM questions ORDER BY essay_id").fetchall()
 
     assert rows == [(essay_id_1, "Q1?"), (essay_id_2, "Q2?")]
+
+
+def test_init_db_enables_wal_mode(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    storage.init_db()
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        (mode,) = conn.execute("PRAGMA journal_mode").fetchone()
+
+    assert mode.lower() == "wal"
+
+
+def test_save_llm_call_persists_batched_row(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    storage.save_llm_call(
+        essay_id,
+        None,
+        3,
+        "questioner",
+        "success",
+        1,
+        1234,
+        prompt_tokens=100,
+        completion_tokens=50,
+    )
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT essay_id, sentence_index, sentence_count, call_type, status, "
+            "retries, duration_ms, prompt_tokens, completion_tokens, error_message "
+            "FROM llm_calls"
+        ).fetchone()
+
+    assert row == (essay_id, None, 3, "questioner", "success", 1, 1234, 100, 50, None)
+
+
+def test_save_llm_call_records_failure_with_error_message(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    storage.save_llm_call(
+        essay_id, None, 5, "checker", "failed", 2, 999, error_message="backend unreachable"
+    )
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        status, error_message = conn.execute(
+            "SELECT status, error_message FROM llm_calls"
+        ).fetchone()
+
+    assert status == "failed"
+    assert error_message == "backend unreachable"
+
+
+def test_save_llm_call_defaults_missing_sentence_count_column_not_required(tmp_path, monkeypatch):
+    # Old-style per-sentence call: sentence_index set, sentence_count still explicit.
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    storage.save_llm_call(essay_id, 2, 1, "questioner", "success", 0, 500)
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        sentence_index, sentence_count = conn.execute(
+            "SELECT sentence_index, sentence_count FROM llm_calls"
+        ).fetchone()
+
+    assert sentence_index == 2
+    assert sentence_count == 1
+
+
+def test_save_feedback_persists_rating(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    storage.save_feedback(essay_id, 0, "good")
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT essay_id, sentence_index, rating FROM feedback"
+        ).fetchone()
+
+    assert row == (essay_id, 0, "good")
+
+
+def test_save_feedback_appends_rather_than_overwrites(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    storage.save_feedback(essay_id, 0, "good")
+    storage.save_feedback(essay_id, 0, "bad")
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        ratings = [
+            r for (r,) in conn.execute(
+                "SELECT rating FROM feedback ORDER BY id"
+            ).fetchall()
+        ]
+
+    assert ratings == ["good", "bad"]
+
+
+def test_save_feedback_rejects_invalid_rating(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    try:
+        storage.save_feedback(essay_id, 0, "meh")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
