@@ -1,19 +1,44 @@
 # Write Like a Reader
 
-A demo app that gives composition students feedback on their expository
-writing. A student pastes or uploads a paragraph or two; an LLM agent (the
+## Problem Statement
+Walk into any English Composition classroom and you'll see a teacher 
+explaining that you have to use details and reasons to support your ideas 
+because, as is oft quoted, "In God we trust; everyone else has to bring 
+evidence." 
+
+Unfortunately, most students have a blind spot when it comes to providing 
+these details and reasons because they know what they think and get get in 
+the mind of their reader. 
+
+That's where [Write Like a Reader Comes](https://teachinglearninglearningteaching.wordpress.com/2015/01/26/learning-to-write-like-a-reader-teaching-students-how-to-edit-and-do-peer-review/) into play:
+- a student gives their writing to a classmate
+- the classmate reads the first sentence
+- they think of 1-3 Wh-questions [who, what, when, where, why, which, how, whose, how] based on what they just read. If the next sentence
+   - *DOESN'T* answer the question(s), they write it/them down on their paper/draft
+   - *DOES* answer the question, they don't write anything down 
+
+When the student finishes the draft, they pass it back to their classmate who: 
+- answers the questions
+- edits their draft to integrate the new details and reasons strengthening their argument 
+- or revises their argument because they've changed their position after reflecting on it. 
+
+
+## Write Like a Reader APP
+Simply put, this app mimics the classroom activity described above. 
+
+- A student pastes or uploads a paragraph or two
+-  an LLM agent (the
 "Questioner") asks the Wh-questions a reader would have after each sentence,
-and a second LLM agent (the "Answer-checker") checks whether the very next
-sentence answers them. Unanswered questions are highlighted inline on the
+- a second LLM agent (the "Answer-checker") checks whether the very next
+sentence answers them. 
+- Unanswered questions are highlighted inline on the
 draft, so the student can revise their own draft — the tool flags gaps, it
 doesn't fix them.
 
-This is a demo / proof-of-concept, used internally and with investors. It's
+This is a demo / proof-of-concept.  It's
 built for English 101/102 students uploading their own drafts; instructors
 recommend it but aren't direct users of the app itself.
 
-See `CLAUDE.MD` for the full project brief and `docs/write_like_a_reader.md`
-for the classroom activity this automates.
 
 ## How it works
 
@@ -115,11 +140,3 @@ serving the model:
   look right.
 - Stop Ollama and confirm the app fails gracefully (matching the existing
   backend-unreachable handling in `pipeline.py`) rather than crashing.
-
-## Project specs
-
-Full design detail for this implementation lives in
-[`docs/specs/`](docs/specs/) — start with `05_integration_notes.md` for how
-the specs fit together. `00_question_id.md` is retired/superseded (kept for
-history) — feedback ended up keyed on `(essay_id, sentence_index)` instead
-of a per-question id, so it was never implemented.
