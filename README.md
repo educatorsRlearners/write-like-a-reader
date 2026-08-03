@@ -10,7 +10,7 @@ Unfortunately, most students have a blind spot when it comes to providing
 these details and reasons because they know what they think and get get in 
 the mind of their reader. 
 
-That's where [Write Like a Reader Comes](https://teachinglearninglearningteaching.wordpress.com/2015/01/26/learning-to-write-like-a-reader-teaching-students-how-to-edit-and-do-peer-review/) into play:
+That's where [Write Like a Reader](https://teachinglearninglearningteaching.wordpress.com/2015/01/26/learning-to-write-like-a-reader-teaching-students-how-to-edit-and-do-peer-review/) comes into play:
 - a student gives their writing to a classmate
 - the classmate reads the first sentence
 - they think of 1-3 Wh-questions [who, what, when, where, why, which, how, whose, how] based on what they just read. If the next sentence
