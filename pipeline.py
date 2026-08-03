@@ -1,3 +1,5 @@
+from config import WH_QUESTIONS
+
 import logging
 import re
 import time
@@ -16,7 +18,6 @@ logger = logging.getLogger(__name__)
 # "- What ..." or "**What ...**") even though the JSON response instruction
 # asks for a bare array of strings.
 _LEADING_MARKUP_RE = re.compile(r"^[\-\*\s]+")
-_WH_WORDS = {"who", "what", "when", "where", "why", "how"}
 
 
 def _normalize_question_text(raw: str) -> str:
@@ -35,7 +36,7 @@ def _normalize_question_text(raw: str) -> str:
         text = sentences[0]
 
     first_word = text.split()[0].strip(".,;:!?").lower() if text else ""
-    if first_word not in _WH_WORDS:
+    if first_word not in WH_QUESTIONS:
         logger.warning("Question does not start with a Wh-word: %r", text)
 
     return text
@@ -61,7 +62,11 @@ def _parse_batch_questions(data, n: int) -> tuple[dict[int, list[Question]], set
         parsed = []
         for item in raw_list:
             if isinstance(item, str) and item.strip():
-                parsed.append(Question(text=_normalize_question_text(item)))
+                normalized = _normalize_question_text(item)
+                if not any(c.isalnum() for c in normalized):
+                    logger.warning("Dropping junk question text: %r", item)
+                    continue
+                parsed.append(Question(text=normalized))
         questions_by_index[i] = parsed
     return questions_by_index, failed_indices
 

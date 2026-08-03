@@ -152,6 +152,24 @@ def test_malformed_question_entries_are_skipped():
     assert [q.text for q in result.annotations[0].questions] == ["Who is valid one?"]
 
 
+def test_junk_question_dropped_real_question_kept():
+    text = "Only one sentence here."
+    questioner_response = {"0": ["Who is here?", "..."]}
+    with patch("llm_client.generate_json", side_effect=_fake_generate_json(questioner_response)):
+        result = run(text)
+    assert len(result.annotations) == 1
+    assert [q.text for q in result.annotations[0].questions] == ["Who is here?"]
+
+
+def test_sentence_with_only_junk_question_gets_no_annotation():
+    text = "Only one sentence here."
+    questioner_response = {"0": ["...", "?"]}
+    with patch("llm_client.generate_json", side_effect=_fake_generate_json(questioner_response)):
+        result = run(text)
+    assert result.annotations == []
+    assert result.question_log == []
+
+
 def test_missing_sentence_index_in_response_is_failed_round_not_whole_submission():
     text = "The cat sat. It was tired. It slept well."
     # index "1" missing entirely from an otherwise well-formed response
