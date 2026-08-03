@@ -1,3 +1,5 @@
+from config import WH_QUESTIONS
+
 import logging
 import re
 import time
@@ -11,48 +13,33 @@ from sentence_split import split_sentences
 
 logger = logging.getLogger(__name__)
 
-# Strip a leading bullet/markdown marker ("- ", "* ", "**") before matching
-# the category, since the questioner may echo bullet-list formatting (e.g.
-# "- Who: ..." or "**Who:** ...") even though the JSON response instruction
+# Strip a leading bullet/markdown marker ("- ", "* ", "**") before validating
+# the question, since the questioner may echo bullet-list formatting (e.g.
+# "- What ..." or "**What ...**") even though the JSON response instruction
 # asks for a bare array of strings.
 _LEADING_MARKUP_RE = re.compile(r"^[\-\*\s]+")
-# `how\s+\w+(?:\s+\w+)?` covers both one-word ("how long", "how often") and
-# two-word ("how much longer", "how many times") "how" categories.
-_WH_PREFIX_RE = re.compile(
-    r"^\**(who|what|when|where|why|how\s+\w+(?:\s+\w+)?)\**\s*:\**\s*", re.IGNORECASE
-)
-_DEFAULT_PREFIX = "What"
-# Reused as-is to strip a question's Wh-prefix before it's sent to the
-# checker LLM -- the student-facing `Question.text` keeps its prefix.
-_CHECKER_STRIP_PREFIX_RE = _WH_PREFIX_RE
 
 
 def _normalize_question_text(raw: str) -> str:
-    """Enforce the Wh-prefix and 3-sentence constraints on one question string.
+    """Enforce the 1-sentence cap on one question string.
 
-    Returns the normalized text; never returns an empty string for
-    non-empty input (falls back to a `What:` prefix rather than dropping
-    the question).
+    Truncates to just the first sentence. If the resulting text doesn't
+    start with a Wh-word (Who/What/When/Where/Why/How), logs a warning but
+    returns it unchanged rather than rewriting or dropping the question.
     """
     text = _LEADING_MARKUP_RE.sub("", raw.strip()).strip()
 
-    match = _WH_PREFIX_RE.match(text)
-    if match:
-        prefix = match.group(1)
-        body = text[match.end() :].strip()
-    else:
-        prefix = _DEFAULT_PREFIX
-        body = text
+    sentences = [
+        s.text.strip() for s in sentence_split.split_sentences(text) if s.text.strip()
+    ]
+    if sentences:
+        text = sentences[0]
 
-    # Re-title-case the category so "who:" -> "Who:", "HOW MANY:" -> "How many:".
-    prefix = prefix[:1].upper() + prefix[1:].lower()
+    first_word = text.split()[0].strip(".,;:!?").lower() if text else ""
+    if first_word not in WH_QUESTIONS:
+        logger.warning("Question does not start with a Wh-word: %r", text)
 
-    sentences = [s.text.strip() for s in sentence_split.split_sentences(body) if s.text.strip()]
-    if len(sentences) > 3:
-        sentences = sentences[:3]
-    body = " ".join(sentences) if sentences else body
-
-    return f"{prefix}: {body}"
+    return text
 
 
 def _parse_batch_questions(data, n: int) -> tuple[dict[int, list[Question]], set[int]]:
@@ -75,7 +62,11 @@ def _parse_batch_questions(data, n: int) -> tuple[dict[int, list[Question]], set
         parsed = []
         for item in raw_list:
             if isinstance(item, str) and item.strip():
-                parsed.append(Question(text=_normalize_question_text(item)))
+                normalized = _normalize_question_text(item)
+                if not any(c.isalnum() for c in normalized):
+                    logger.warning("Dropping junk question text: %r", item)
+                    continue
+                parsed.append(Question(text=normalized))
         questions_by_index[i] = parsed
     return questions_by_index, failed_indices
 
@@ -137,7 +128,9 @@ def _record_call(
         logger.warning("Failed to save LLM call timing", exc_info=True)
 
 
-def _timed_call(essay_id, call_type: str, sentence_count: int, prompt: str, retry_prompt: str):
+def _timed_call(
+    essay_id, call_type: str, sentence_count: int, prompt: str, retry_prompt: str
+):
     """Shared by both the questioner and checker call sites. `call_type`
     and `sentence_count` are passed in by the caller -- never hardcoded
     here, so a checker failure can never get mis-logged as a questioner row.
@@ -162,19 +155,35 @@ def _timed_call(essay_id, call_type: str, sentence_count: int, prompt: str, retr
     except llm_client.LLMError as exc:
         duration_ms = int((time.perf_counter() - start) * 1000)
         _record_call(
-            essay_id, call_type, sentence_count, "failed", retries, duration_ms,
-            prompt_tokens, completion_tokens, str(exc),
+            essay_id,
+            call_type,
+            sentence_count,
+            "failed",
+            retries,
+            duration_ms,
+            prompt_tokens,
+            completion_tokens,
+            str(exc),
         )
         raise
     duration_ms = int((time.perf_counter() - start) * 1000)
     _record_call(
-        essay_id, call_type, sentence_count, "success", retries, duration_ms,
-        prompt_tokens, completion_tokens, None,
+        essay_id,
+        call_type,
+        sentence_count,
+        "success",
+        retries,
+        duration_ms,
+        prompt_tokens,
+        completion_tokens,
+        None,
     )
     return data
 
 
-def _run_batch_questioner(essay_id, sentences) -> tuple[dict[int, list[Question]], set[int]]:
+def _run_batch_questioner(
+    essay_id, sentences
+) -> tuple[dict[int, list[Question]], set[int]]:
     n = len(sentences)
     prompt = prompts.build_batch_questioner_prompt([s.text for s in sentences])
     try:
@@ -197,13 +206,14 @@ def _run_batch_checker(
     if not checkable:
         return {}
 
-    checker_text_map = {
-        i: [_CHECKER_STRIP_PREFIX_RE.sub("", q.text, count=1) or q.text for q in qs]
-        for i, qs in checkable.items()
-    }
-    prompt = prompts.build_batch_checker_prompt(checker_text_map, [s.text for s in sentences])
+    checker_text_map = {i: [q.text for q in qs] for i, qs in checkable.items()}
+    prompt = prompts.build_batch_checker_prompt(
+        checker_text_map, [s.text for s in sentences]
+    )
     try:
-        data = _timed_call(essay_id, "checker", len(checkable), prompt, prompts.CHECKER_RETRY)
+        data = _timed_call(
+            essay_id, "checker", len(checkable), prompt, prompts.CHECKER_RETRY
+        )
     except llm_client.LLMError:
         return {i: list(qs) for i, qs in checkable.items()}
     return _parse_batch_verdicts(data, checkable)
@@ -241,7 +251,9 @@ def run(text: str, essay_id: int | None = None, on_progress=None) -> PipelineRes
 
         shown_ids = {id(q) for q in unanswered}
         for q in questions:
-            result.question_log.append(QuestionRecord(text=q.text, shown=id(q) in shown_ids))
+            result.question_log.append(
+                QuestionRecord(text=q.text, shown=id(q) in shown_ids)
+            )
 
         if unanswered:
             result.annotations.append(
