@@ -10,6 +10,18 @@ relocated to 02's batch function names).
 
 ## Verdict: Clean sign-off. Ready for `docs/specs/04_readme.md`.
 
+**Post-implementation update (`docs/prompts/07_refactor_prompts.md`):**
+`03_output_format.md` has since been marked SUPERSEDED. The hook points
+below (`_parse_batch_questions`'s per-index loop calling
+`_normalize_question_text`, and `_run_batch_checker`'s question-text
+assembly for the checker prompt) are still structurally accurate — the
+call sites didn't move — but `_normalize_question_text`'s internal
+contract changed: it now enforces a 1-sentence cap (not 3) and
+warn-only Wh-first-word validation (no more colon-prefix, no more
+default-to-`What:` rewrite), and `_run_batch_checker` no longer strips
+anything before building the checker prompt (`_CHECKER_STRIP_PREFIX_RE`
+was deleted). See `pipeline.py` for the current implementation.
+
 ## 1. `03`'s relocated hook points — verified against `02`'s actual text, not just plausibility
 
 Checked both hook points Agent 3 relocated `03_output_format.md` to,

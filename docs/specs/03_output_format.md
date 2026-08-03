@@ -1,5 +1,23 @@
 # Spec: Question Output Format (length cap + Wh-word prefix)
 
+**Status: SUPERSEDED (post-implementation revision, `docs/prompts/07_refactor_prompts.md`).**
+This spec's colon-prefix contract (`"Who: Who says that?"`) has been
+replaced. The questioner prompt was hand-edited to ask for natural,
+unprefixed questions (`"Who says that?"`), and `pipeline._normalize_question_text`
+was rewritten to match: it now enforces a **1-sentence cap** (not 3) and
+**validates** that the question's own first word is a Wh-word
+(who/what/when/where/why/how), logging a warning and passing the text
+through **unchanged** if not — it no longer rewrites or prepends a default
+prefix. `_WH_PREFIX_RE`, `_DEFAULT_PREFIX`, and `_CHECKER_STRIP_PREFIX_RE`
+(the checker-prompt prefix-stripping step in Section 6) have all been
+deleted outright — there's no colon-prefix left to strip, so `q.text` goes
+to the checker unchanged. See `pipeline.py`'s `_normalize_question_text`
+and `_run_batch_checker` for the current implementation. Everything below
+this notice documents the retired design — kept for history, not
+implemented.
+
+---
+
 **Status:** Spec only; no app code changes yet.
 **Owner:** This spec (`03_output_format.md`) owns the questioner-prompt
 instruction text (`prompts.build_batch_questioner_prompt`, formerly

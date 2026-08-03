@@ -202,20 +202,22 @@ README knows what's coming without mistaking a spec for working code.
   doesn't address either verified bottleneck — Ollama's server-side request
   serialization, or the context-window limit the new caps exist to respect
   — so adopting it would add a dependency without fixing anything.
-- **Question output format** (`docs/specs/03_output_format.md`) — caps
-  generated questions at three sentences and prefixes each with its
-  Wh-word category (e.g. `Who:`, `How long:`) so students can scan flagged
-  questions faster.
+- **Question output format** (`docs/specs/03_output_format.md`, superseded
+  by `docs/prompts/07_refactor_prompts.md`) — caps generated questions at
+  one sentence and validates (warn-only, no rewrite) that each question's
+  own first word is a Wh-word (who/what/when/where/why/how), so students
+  see natural questions like "What new policy would the school board
+  consider?" instead of a colon-prefixed category tag.
 - **This README** (`docs/specs/04_readme.md`) — the spec this file was
   generated from.
 
-Two small implementation notes carried forward from spec review
+One small implementation note carried forward from spec review
 (`docs/specs/05_integration_notes.md`), for whoever implements the above:
 `storage.init_db()` will need the additive table/index blocks from the
-timing and feedback specs concatenated by hand; and if `_check_answers`
-gets folded into the single-batch call flow, the checker-prompt
-prefix-stripping step from the output-format spec needs to be carried over
-manually.
+timing and feedback specs concatenated by hand. (The checker-prompt
+prefix-stripping note that used to live here no longer applies — per
+`docs/prompts/07_refactor_prompts.md`, questions carry no colon-prefix at
+all anymore, so there is nothing to strip before the checker call.)
 
 (Note: `05_integration_notes.md` itself predates `02_speed.md`'s rework
 from per-sentence parallelization to single-batch calls — its wording still
