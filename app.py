@@ -7,16 +7,9 @@ import highlight
 import pipeline
 import sentence_split
 import storage
-from config import MAX_SENTENCES, MAX_WORDS
+from config import EXAMPLE_DRAFT, MAX_SENTENCES, MAX_WORDS
 
 logger = logging.getLogger(__name__)
-
-EXAMPLE_DRAFT = (
-    "Social media has changed the way people communicate. Many students use it "
-    "every day. Some teachers think it is a distraction. The school board is "
-    "considering a new policy. This would help students focus better by "
-    "resisting the siren's call of social media."
-)
 
 
 def load_txt(file_path: str | None):
@@ -100,7 +93,9 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
             logger.warning("Failed to save questions to storage", exc_info=True)
 
     status = _status_notice(result)
-    full_notice = "\n\n".join(part for part in (word_notice, sentence_notice, status) if part)
+    full_notice = "\n\n".join(
+        part for part in (word_notice, sentence_notice, status) if part
+    )
     chunks = highlight.to_highlighted_text(result)
     chunk_map = highlight.chunk_sentence_indices(result)
     download_path = _write_annotated_draft(result)
@@ -125,7 +120,9 @@ def on_select(state, evt: gr.SelectData):
     if annotation is None:
         return "*(this sentence has no unanswered questions)*", None
     lines = [f"- {q.text}" for q in annotation.questions]
-    selection = (result.essay_id, sentence_index) if result.essay_id is not None else None
+    selection = (
+        (result.essay_id, sentence_index) if result.essay_id is not None else None
+    )
     return "\n".join(lines), selection
 
 
