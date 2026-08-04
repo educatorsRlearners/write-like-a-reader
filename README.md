@@ -13,7 +13,9 @@ the mind of their reader.
 That's where [Write Like a Reader](https://teachinglearninglearningteaching.wordpress.com/2015/01/26/learning-to-write-like-a-reader-teaching-students-how-to-edit-and-do-peer-review/) comes into play:
 - a student gives their writing to a classmate
 - the classmate reads the first sentence
-- they think of 1-3 Wh-questions [who, what, when, where, why, which, how, whose, how] based on what they just read. If the next sentence
+- they think of 1-3 questions.  
+
+ If the next sentence
    - *DOESN'T* answer the question(s), they write it/them down on their paper/draft
    - *DOES* answer the question, they don't write anything down 
 
