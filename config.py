@@ -13,4 +13,3 @@ MAX_WORDS = 1000
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
 OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "60"))
-WH_QUESTIONS = "whose, who, which, what, when, where, why, how"
