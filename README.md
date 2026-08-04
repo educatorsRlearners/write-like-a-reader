@@ -54,12 +54,8 @@ recommend it but aren't direct users of the app itself.
    requests server-side regardless of client-side concurrency, so batching
    into two calls total was the actual fix; see `docs/specs/02_speed.md`.)
 4. Answered questions are dropped silently. Unanswered ones are attached to
-   that sentence as an annotation. Every question is capped at one sentence
-   and expected to start with a Wh-word (Who, What, When, Where, Why, How)
-   as its own first word — not a separate `"Word:"` prefix — e.g. "What new
-   policy would the school board consider?" A question that doesn't comply
-   is logged and shown to the student unchanged rather than rewritten or
-   dropped.
+   that sentence as an annotation. Every question is capped at one sentence,
+   e.g. "What new policy would the school board consider?"
 5. `highlight.py` turns the annotations into Gradio `HighlightedText` spans;
    clicking a highlighted sentence shows its unanswered questions and a
    👍/👎 control to rate whether that sentence's flagged questions were good.

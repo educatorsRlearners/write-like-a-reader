@@ -1,5 +1,3 @@
-from config import WH_QUESTIONS
-
 QUESTIONER_RETRY = (
     "Your previous response was not valid JSON. Respond with ONLY a JSON object "
     "mapping each sentence index (as a string) to an array of question strings, "
@@ -17,7 +15,7 @@ CHECKER_RETRY = (
 _FORMATTING_RULES = """Formatting rules for every question you write:
 - Write the full question with proper grammar and punctuation.
 - Keep each question to one sentence.
-- Every question should start with one of the following words: {WH_QUESTIONS}. 
+- Phrase every question as a genuine, direct question (not a statement).
 - Never write placeholder or filler text (e.g. "...") as a question. Every
   question must be a real, complete question about the sentence you read.
 """
@@ -31,7 +29,7 @@ def build_batch_questioner_prompt(sentences: list[str]) -> str:
     
     {numbered}
     
-    For EACH sentence index above, write one to three short questions, starting with {WH_QUESTIONS}, 
+    For EACH sentence index above, write one to three short questions
     that YOU, the reader, would want answered right after reading that
     sentence, given everything you'd have read up through that point (sentences
     0 through that index). 

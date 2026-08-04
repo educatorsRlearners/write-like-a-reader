@@ -1,12 +1,9 @@
-from config import WH_QUESTIONS
-
 import logging
 import re
 import time
 
 import llm_client
 import prompts
-import sentence_split
 import storage
 from models import Annotation, PipelineResult, Question, QuestionRecord
 from sentence_split import split_sentences
@@ -23,21 +20,13 @@ _LEADING_MARKUP_RE = re.compile(r"^[\-\*\s]+")
 def _normalize_question_text(raw: str) -> str:
     """Enforce the 1-sentence cap on one question string.
 
-    Truncates to just the first sentence. If the resulting text doesn't
-    start with a Wh-word (Who/What/When/Where/Why/How), logs a warning but
-    returns it unchanged rather than rewriting or dropping the question.
+    Strips leading bullet/markup and truncates to just the first sentence.
     """
     text = _LEADING_MARKUP_RE.sub("", raw.strip()).strip()
 
-    sentences = [
-        s.text.strip() for s in sentence_split.split_sentences(text) if s.text.strip()
-    ]
+    sentences = [s.text.strip() for s in split_sentences(text) if s.text.strip()]
     if sentences:
         text = sentences[0]
-
-    first_word = text.split()[0].strip(".,;:!?").lower() if text else ""
-    if first_word not in WH_QUESTIONS:
-        logger.warning("Question does not start with a Wh-word: %r", text)
 
     return text
 
