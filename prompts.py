@@ -1,3 +1,5 @@
+from config import EXAMPLE_DRAFT
+
 QUESTIONER_RETRY = (
     "Your previous response was not valid JSON. Respond with ONLY a JSON object "
     "mapping each sentence index (as a string) to an array of question strings, "
@@ -60,10 +62,15 @@ def build_batch_questioner_prompt(sentences: list[str]) -> str:
     ask about a detail the sentence doesn't answer yet, e.g. "How has
     social media changed the way people communicate?"
 
-    Additionally, check that your question makes sense. For example, if the sentence is: 
-    "This would help students focus better by resisting the sirens call of social media.' a question like
-    "How does this new policy resist the siren's call of social media." doesn't make any sense. Instead, ask
-    something like "How would this new policy improve student's focus?"  
+    Do not ask comprehension questions. For example, if the sentence is 
+    "Some teachers think it is a distraction." a comprehension question would be 
+    "Who thinks that social media is a distraction." 
+
+    Additionally, check that your question is grammatical. For example, if the sentence is: 
+    "This would help students focus better by resisting the sirens call of social media.' a 
+    question like "How does this new policy resist the siren's call of social media." 
+    doesn't make any sense. Instead, ask something like 
+    "How would this new policy improve student's focus?"  
     
     If a sentence raises no new reader questions,
     its array can be empty.
@@ -91,15 +98,31 @@ def build_batch_checker_prompt(
             f'"{sentences[i + 1]}"):\n{numbered_questions}'
         )
     joined = "\n\n".join(sections)
-    return f"""A reader asked the following questions after reading certain sentences in a
-student essay. For each sentence's questions, decide whether the sentence
-listed right after it, on its own, answers each question. Only mark a
-question answered if that next sentence actually contains that answer -- do
-not assume information from elsewhere in the essay.
+    checker_prompt = f"""A reader asked the following questions after reading certain sentences in a
+    student essay. For each sentence's questions, decide whether the sentence
+    listed right after it, on its own, answers each question. Only mark a
+    question answered if that next sentence actually contains that answer -- do
+    not assume information from elsewhere in the essay.
 
-{joined}
+    For example, take the following sample: {EXAMPLE_DRAFT}
 
-Respond with ONLY a JSON object mapping each sentence index (as a string) to
-an array of true/false values, one per question in that sentence's list, in
-the same order as listed above, of this exact form, no other text:
-{{"0": [true, false], "1": [true], ...}}"""
+    Look specifically at the second sentence: 
+
+    1. Many students use it every day.
+
+    If we look at the following questions: 
+    [Who use it every day?", "What do some teachers think about its impact?"
+
+    We can see the second question is answered by the following sentence 
+    at index 2: "Some teachers think it is a distraction." 
+
+    As such, the student should never see the second question. 
+    
+    {joined}
+    
+    Respond with ONLY a JSON object mapping each sentence index (as a string) to
+    an array of true/false values, one per question in that sentence's list, in
+    the same order as listed above, of this exact form, no other text:
+    {{"0": [true, false], "1": [true], ...}}"""
+
+    return checker_prompt
