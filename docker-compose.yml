@@ -1,0 +1,66 @@
+services:
+  ollama:
+    image: ollama/ollama:0.32.6
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    # Host port publish is only for local debugging (e.g. `curl
+    # localhost:11434`); app/ollama-pull reach this over compose's internal
+    # DNS regardless, so it's not required for the stack to function.
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ollama-pull:
+    image: ollama/ollama:0.32.6
+    depends_on:
+      ollama:
+        condition: service_healthy
+    # Pulls over the running ollama server's HTTP API (OLLAMA_HOST), not a
+    # direct blob write to the shared volume — so `ollama` sees the model
+    # immediately once this container exits 0, no separate sync race.
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["ollama", "pull", "qwen2.5:3b"]
+    restart: "no"
+
+  app:
+    build: .
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
+      - APP_HOST=0.0.0.0
+      - APP_PORT=7860
+      - DB_PATH=/app/data/essays.db
+    volumes:
+      - ./data:/app/data
+    command: ["uv", "run", "app.py"]
+
+  dashboard:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "7861:7861"
+    environment:
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=7861
+      - DB_PATH=/app/data/essays.db
+    volumes:
+      - ./data:/app/data
+    command: ["uv", "run", "dashboard.py"]
+
+volumes:
+  ollama_data:

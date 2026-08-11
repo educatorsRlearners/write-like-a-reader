@@ -5,12 +5,10 @@ A separate process from app.py -- reads the same sqlite database
 alters schema. Run with `python dashboard.py`.
 """
 
-import sqlite3
-
+import config
 import gradio as gr
 import pandas as pd
-
-import config
+import sqlite3
 
 DB_PATH = config.DB_PATH
 
@@ -92,21 +90,27 @@ with gr.Blocks(title="Write Like a Reader — Dashboard") as dashboard:
     refresh_btn = gr.Button("Refresh")
 
     with gr.Tab("Feedback Quality"):
-        volume_plot = gr.BarPlot(x="day", y="n", color="rating", title="Feedback volume by day")
-        rate_plot = gr.LinePlot(x="day", y="good_rate", title="Good-question rate over time")
+        volume_plot = gr.BarPlot(
+            x="day", y="n", color="rating", title="Feedback volume by day"
+        )
+        rate_plot = gr.LinePlot(
+            x="day", y="good_rate", title="Good-question rate over time"
+        )
 
     with gr.Tab("LLM Latency"):
         duration_plot = gr.BarPlot(
             x="call_type", y="avg_duration_ms", title="Average duration by call type"
         )
-        failure_plot = gr.LinePlot(
-            x="hour", y="failed", title="Failed calls per hour"
-        )
+        failure_plot = gr.LinePlot(x="hour", y="failed", title="Failed calls per hour")
         per_sentence_plot = gr.BarPlot(
-            x="call_type", y="avg_ms_per_sentence", title="Average duration per sentence"
+            x="call_type",
+            y="avg_ms_per_sentence",
+            title="Average duration per sentence",
         )
         token_plot = gr.BarPlot(
-            x="call_type", y="avg_total_tokens", title="Average total tokens by call type"
+            x="call_type",
+            y="avg_total_tokens",
+            title="Average total tokens by call type",
         )
 
     def _refresh_all():
@@ -131,4 +135,6 @@ with gr.Blocks(title="Write Like a Reader — Dashboard") as dashboard:
     refresh_btn.click(_refresh_all, outputs=_outputs)
 
 if __name__ == "__main__":
-    dashboard.launch()
+    dashboard.launch(
+        server_name=config.DASHBOARD_HOST, server_port=config.DASHBOARD_PORT
+    )
