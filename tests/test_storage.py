@@ -1,6 +1,8 @@
 import sqlite3
 from dataclasses import dataclass
 
+import pytest
+
 import storage
 
 
@@ -188,8 +190,5 @@ def test_save_feedback_rejects_invalid_rating(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
     essay_id = storage.save_essay("Some draft.")
 
-    try:
+    with pytest.raises(ValueError):
         storage.save_feedback(essay_id, 0, "meh")
-        assert False, "expected ValueError"
-    except ValueError:
-        pass
