@@ -7,7 +7,7 @@ import highlight
 import pipeline
 import sentence_split
 import storage
-from config import EXAMPLE_DRAFT, MAX_SENTENCES, MAX_WORDS
+from config import APP_HOST, APP_PORT, EXAMPLE_DRAFT, MAX_SENTENCES, MAX_WORDS
 
 logger = logging.getLogger(__name__)
 
@@ -230,4 +230,4 @@ with gr.Blocks(title="Write Like a Reader") as demo:
 demo.queue()
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name=APP_HOST, server_port=APP_PORT)

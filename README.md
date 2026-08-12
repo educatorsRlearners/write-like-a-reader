@@ -13,7 +13,9 @@ the mind of their reader.
 That's where [Write Like a Reader](https://teachinglearninglearningteaching.wordpress.com/2015/01/26/learning-to-write-like-a-reader-teaching-students-how-to-edit-and-do-peer-review/) comes into play:
 - a student gives their writing to a classmate
 - the classmate reads the first sentence
-- they think of 1-3 Wh-questions [who, what, when, where, why, which, how, whose, how] based on what they just read. If the next sentence
+- they think of 1-3 questions.  
+
+ If the next sentence
    - *DOESN'T* answer the question(s), they write it/them down on their paper/draft
    - *DOES* answer the question, they don't write anything down
 
@@ -117,14 +119,49 @@ Requires Python >=3.12 (see `pyproject.toml`).
    uv run dashboard.py
    ```
 
+## Running with Docker
+
+As an alternative to the local `uv`-based setup above, the whole stack
+(Ollama + this app + the dashboard) can run in containers via Docker Compose.
+
+1. Create the data directory and open up its permissions once, so the
+   containers (which run as a non-root user) can write to it:
+
+   ```
+   mkdir -p data && chmod 777 data
+   ```
+
+2. Build and start everything:
+
+   ```
+   docker compose up --build
+   ```
+
+   The first run pulls the `ollama/ollama` image and the `qwen2.5:3b` model
+   into a persistent volume before starting the app and dashboard — this can
+   take several minutes depending on connection speed. Subsequent runs reuse
+   the cached volume and skip the download.
+
+3. Open the app at http://localhost:7860 and the dashboard at
+   http://localhost:7861.
+
+4. Drafts persist to `./data/essays.db` on the host, same as the local setup.
+
+5. Stop everything with `docker compose down` (add `-v` to also delete the
+   downloaded model and start fresh next time).
+
 ## Input limits
 
 Two soft caps apply per draft: ~1000 words (`config.MAX_WORDS`) and 20
 sentences (`config.MAX_SENTENCES`). Both warn but don't block — a longer
 draft still runs, but takes longer and risks a larger, slower single batch
 call. These caps exist specifically to keep a whole submission small enough
-to fit in one questioner call and one checker call; see
-`docs/specs/02_speed.md` for the token-budget reasoning behind them.
+to fit in one questioner call and one checker call. 
+
+Additionally, doing *Write Like a Reader* for anything longer than a couple
+paragraphs is over-kill; the idea is to make students **aware** of the concept
+so they internalize the process and not to spot check a specific piece of writing. 
+
 
 ## Verifying the local model end-to-end
 
