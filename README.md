@@ -75,49 +75,30 @@ against a local Ollama model.
 
 ## Setup
 
-Requires Python >=3.12 (see `pyproject.toml`).
+Requires Python >=3.12. On macOS or Linux (or Windows via WSL/Git Bash),
+that's all you need:
 
-1. Install dependencies:
+```
+make run
+```
 
-   ```
-   uv sync
-   ```
+This installs [uv](https://docs.astral.sh/uv/) and dependencies, installs
+and starts Ollama and pulls the model, if any of those aren't already set
+up, and launches the app at http://127.0.0.1:7860. On native Windows
+without a POSIX shell, use the [Docker](#running-with-docker) path below
+instead.
 
-2. Install [Ollama](https://ollama.com) and pull the model the app uses:
+Other useful targets — run `make help` to see the full list:
 
-   ```
-   brew install ollama
-   ollama pull qwen2.5:3b
-   ```
+- `make test` — run the test suite
+- `make dashboard` — launch the dashboard (separate process, reviews
+  feedback quality and LLM latency/token cost)
+- `make clean` — remove cached bytecode and test caches
 
-   Make sure the Ollama service is running (`ollama serve`, or just launch
-   the Ollama app — it runs in the background) before starting the app
-   below. The app calls the local Ollama API (`http://localhost:11434` by
-   default), so no network access or API token is required at runtime.
-
-   Optional env vars (set in a `.env` file if you want to override the
-   defaults): `OLLAMA_MODEL` (default `qwen2.5:3b`), `OLLAMA_HOST` (default
-   is Ollama's own local default), `OLLAMA_TIMEOUT` (seconds, default `60`),
-   `DB_PATH` (default `data/essays.db`).
-
-3. Run the tests:
-
-   ```
-   uv run pytest
-   ```
-
-4. Launch the app:
-
-   ```
-   uv run app.py
-   ```
-
-5. (Optional) Launch the dashboard, in a separate process, to review
-   feedback quality and LLM latency/token cost:
-
-   ```
-   uv run dashboard.py
-   ```
+Optional env vars (set in a `.env` file if you want to override the
+defaults): `OLLAMA_MODEL` (default `qwen2.5:3b`), `OLLAMA_HOST` (default
+is Ollama's own local default), `OLLAMA_TIMEOUT` (seconds, default `60`),
+`DB_PATH` (default `data/essays.db`).
 
 ## Running with Docker
 
@@ -160,7 +141,7 @@ to fit in one questioner call and one checker call.
 
 Additionally, doing *Write Like a Reader* for anything longer than a couple
 paragraphs is over-kill; the idea is to make students **aware** of the concept
-so they internalize the process and not to spot check a specific piece of writing. 
+so they internalize the process and, hopefully, stop needing the app. 
 
 
 ## Verifying the local model end-to-end
