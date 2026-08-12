@@ -155,8 +155,12 @@ Two soft caps apply per draft: ~1000 words (`config.MAX_WORDS`) and 20
 sentences (`config.MAX_SENTENCES`). Both warn but don't block — a longer
 draft still runs, but takes longer and risks a larger, slower single batch
 call. These caps exist specifically to keep a whole submission small enough
-to fit in one questioner call and one checker call; see
-`docs/specs/02_speed.md` for the token-budget reasoning behind them.
+to fit in one questioner call and one checker call. 
+
+Additionally, doing *Write Like a Reader* for anything longer than a couple
+paragraphs is over-kill; the idea is to make students **aware** of the concept
+so they internalize the process and not to spot check a specific piece of writing. 
+
 
 ## Verifying the local model end-to-end
 
