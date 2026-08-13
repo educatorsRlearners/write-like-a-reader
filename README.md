@@ -1,5 +1,7 @@
 # Write Like a Reader
 
+![Screenshot of the Write Like a Reader Web App](docs/hero_image.png)
+
 ## Problem Statement
 Walk into any English Composition classroom and you'll see a teacher 
 explaining that you have to use details and reasons to support your ideas 
