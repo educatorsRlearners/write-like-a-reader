@@ -1,6 +1,6 @@
 # Write Like a Reader
 
-https://github.com/user-attachments/assets/81615429-00bd-4978-b665-e2d077752118
+https://github.com/user-attachments/assets/2e09036e-fee9-4253-8cc4-63adc4799bf7
 
 ## Problem Statement
 Walk into any English Composition classroom and you'll see a teacher 
