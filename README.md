@@ -1,6 +1,6 @@
 # Write Like a Reader
 
-![Screenshot of the Write Like a Reader Web App](docs/hero_image.png)
+https://github.com/user-attachments/assets/81615429-00bd-4978-b665-e2d077752118
 
 ## Problem Statement
 Walk into any English Composition classroom and you'll see a teacher 
