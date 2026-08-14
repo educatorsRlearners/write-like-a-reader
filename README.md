@@ -144,16 +144,3 @@ to fit in one questioner call and one checker call.
 Additionally, doing *Write Like a Reader* for anything longer than a couple
 paragraphs is over-kill; the idea is to make students **aware** of the concept
 so they internalize the process and, hopefully, stop needing the app. 
-
-
-## Verifying the local model end-to-end
-
-Before treating this as demo-ready, run one full pass with Ollama actually
-serving the model:
-- Confirm `ollama serve` is running and `ollama pull qwen2.5:3b` has
-  finished.
-- Paste in a short (1-2 paragraph) sample essay and confirm the Questioner
-  asks sensible questions and the Answer-checker's answered/unanswered calls
-  look right.
-- Stop Ollama and confirm the app fails gracefully (matching the existing
-  backend-unreachable handling in `pipeline.py`) rather than crashing.
