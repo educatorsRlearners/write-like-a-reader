@@ -4,26 +4,14 @@ import re
 import time
 from typing import Callable
 
-import ollama
+import llm_providers
+from errors import LLMError  # re-exported: callers use llm_client.LLMError
 
-import config
+__all__ = ["LLMError", "generate_json"]
 
 logger = logging.getLogger(__name__)
 
 _JSON_BLOCK_RE = re.compile(r"[\{\[].*[\}\]]", re.DOTALL)
-
-_client: ollama.Client | None = None
-
-
-class LLMError(Exception):
-    """Raised when the LLM backend cannot be reached or returns unusable output."""
-
-
-def _get_client() -> ollama.Client:
-    global _client
-    if _client is None:
-        _client = ollama.Client(host=config.OLLAMA_HOST, timeout=config.OLLAMA_TIMEOUT)
-    return _client
 
 
 def _extract_json(raw: str):
@@ -33,18 +21,14 @@ def _extract_json(raw: str):
     return json.loads(match.group(0))
 
 
-def _call_model(prompt: str) -> dict:
-    """Call the model and return the full Ollama chat response.
+def _call_model(prompt: str) -> llm_providers.LLMResponse:
+    """Call the configured provider and return its normalized response.
 
-    Returns the whole response (not just the message content) so callers can
-    also read `prompt_eval_count`/`eval_count` for token-usage tracking.
+    The response carries the model text plus optional token counts so callers
+    can also track token usage. This is the seam the provider adapters plug
+    into (see `llm_providers.py`).
     """
-    client = _get_client()
-    return client.chat(
-        model=config.OLLAMA_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        options={"num_predict": 2048, "num_ctx": 8192},
-    )
+    return llm_providers.get_provider().complete(prompt)
 
 
 def generate_json(
@@ -64,28 +48,38 @@ def generate_json(
     `on_attempt`, if given, is invoked once per retry actually taken (transient
     backoff retry or JSON-parse retry), never on a clean first-try success.
     `on_result`, if given, is invoked once on success with
-    `(prompt_tokens, completion_tokens)` -- Ollama's `prompt_eval_count`/
-    `eval_count` from the response that ultimately succeeded, or `(None, None)`
-    if the backend didn't report them.
+    `(prompt_tokens, completion_tokens)` from the provider response that
+    ultimately succeeded, or `(None, None)` if the backend didn't report them.
     """
     raw = None
-    response: dict | None = None
+    response: llm_providers.LLMResponse | None = None
     last_error: Exception | None = None
     for attempt in range(max_transient_retries + 1):
         try:
             response = _call_model(prompt)
-            raw = response["message"]["content"]
+            raw = response.text
             break
+        except LLMError:
+            # A configuration error (unknown provider, missing SDK / API key /
+            # model) — deterministic, not transient. Surface it immediately so
+            # the caller can fail open without burning the backoff budget.
+            raise
         except Exception as exc:
             last_error = exc
             if attempt < max_transient_retries:
                 if on_attempt is not None:
                     on_attempt()
-                logger.warning("LLM call failed (attempt %d), retrying: %s", attempt + 1, exc)
+                # exc_info goes to server logs only; keep the message free of
+                # raw SDK/URL strings that could carry credentials.
+                logger.warning(
+                    "LLM call failed (attempt %d), retrying", attempt + 1, exc_info=True
+                )
                 time.sleep(2**attempt)
             continue
     else:
-        raise LLMError(f"LLM backend unreachable after retries: {last_error}") from last_error
+        raise LLMError(
+            f"LLM backend unreachable after retries ({type(last_error).__name__})"
+        ) from last_error
 
     try:
         data = _extract_json(raw)
@@ -96,14 +90,18 @@ def generate_json(
             if on_attempt is not None:
                 on_attempt()
             response = _call_model(retry_prompt)
-            raw = response["message"]["content"]
+            raw = response.text
             data = _extract_json(raw)
         except Exception as retry_exc:
-            raise LLMError(f"Could not parse JSON from LLM output after retry: {retry_exc}") from retry_exc
+            raise LLMError(
+                "Could not get parseable JSON from the LLM after a retry "
+                f"({type(retry_exc).__name__})"
+            ) from retry_exc
 
     if on_result is not None:
-        prompt_tokens = response.get("prompt_eval_count") if response else None
-        completion_tokens = response.get("eval_count") if response else None
+        # `response` is always set here: the loop only breaks after assigning it.
+        prompt_tokens = response.prompt_tokens
+        completion_tokens = response.completion_tokens
         on_result(prompt_tokens, completion_tokens)
 
     return data

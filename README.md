@@ -49,8 +49,10 @@ recommend it but aren't direct users of the app itself.
 
 1. You paste or upload (`.txt`) a draft into the Gradio UI (`app.py`).
 2. `sentence_split.py` (`pysbd`) splits it into sentences.
-3. `pipeline.py` makes exactly two calls to a local LLM (via
-   [Ollama](https://ollama.com)) per submission: one batch "questioner" call
+3. `pipeline.py` makes exactly two calls to an LLM per submission (by default
+   a local model via [Ollama](https://ollama.com); see
+   [Choosing an LLM provider](#choosing-an-llm-provider)): one batch
+   "questioner" call
    asking, for every sentence at once, what a reader would still want to know
    at that point, then one batch "checker" call asking whether each
    sentence's *next* sentence answers its questions. (Earlier prototypes made
@@ -72,8 +74,11 @@ recommend it but aren't direct users of the app itself.
 7. `dashboard.py` is a separate Gradio app that reads the same database to
    show feedback-quality trends and LLM latency/token-cost charts.
 
-There's no accounts, no auth, and no cloud LLM calls — everything runs
-against a local Ollama model.
+There's no accounts and no auth. By default there are also no cloud LLM
+calls — everything runs against a local Ollama model and no draft text
+leaves the machine. A developer can opt into a cloud provider (OpenAI,
+Anthropic, DeepSeek) instead; in that case the draft text is sent to that
+vendor. See [Choosing an LLM provider](#choosing-an-llm-provider).
 
 ## Setup
 
@@ -100,7 +105,74 @@ Other useful targets — run `make help` to see the full list:
 Optional env vars (set in a `.env` file if you want to override the
 defaults): `OLLAMA_MODEL` (default `qwen2.5:3b`), `OLLAMA_HOST` (default
 is Ollama's own local default), `OLLAMA_TIMEOUT` (seconds, default `60`),
-`DB_PATH` (default `data/essays.db`).
+`DB_PATH` (default `data/essays.db`). See the next section for the
+provider-selection vars.
+
+## Choosing an LLM provider
+
+The LLM backend is pluggable. `LLM_PROVIDER` selects the adapter in
+`llm_providers.py`; it defaults to `ollama`, so the local setup above needs
+no configuration and no credentials.
+
+| Var | Purpose | Default |
+| --- | --- | --- |
+| `LLM_PROVIDER` | `ollama` \| `openai` \| `anthropic` \| `deepseek` | `ollama` |
+| `LLM_MODEL` | model name for the chosen provider | falls back to `OLLAMA_MODEL` |
+| `OPENAI_API_KEY` | API key — set the one matching `LLM_PROVIDER` | — |
+| `ANTHROPIC_API_KEY` | " | — |
+| `DEEPSEEK_API_KEY` | " | — |
+| `LLM_BASE_URL` | override the provider's base URL (Azure, Groq, a proxy…) | provider default |
+| `LLM_TIMEOUT` | request timeout, seconds | falls back to `OLLAMA_TIMEOUT` (`60`) |
+| `LLM_MAX_TOKENS` | max tokens to generate per call | `4096` |
+| `LLM_NUM_CTX` | context window (Ollama only) | `8192` |
+
+The cloud SDKs are optional dependencies — install the extra for the
+provider you want:
+
+```
+uv sync --extra openai       # also covers deepseek
+uv sync --extra anthropic
+```
+
+### API keys via `.env`
+
+Copy the template and fill in only the key for the provider you're using:
+
+```
+cp .env.example .env
+```
+
+```
+# .env
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+OPENAI_API_KEY=sk-...
+```
+
+`config.py` loads this on startup:
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+```
+
+so each vendor SDK (`OpenAI()`, `Anthropic()`) reads its key straight from the
+environment — no other code changes. `.env` is gitignored; never commit it.
+Then just run:
+
+```
+uv run app.py
+```
+
+Anthropic and DeepSeek work the same way with `ANTHROPIC_API_KEY` /
+`DEEPSEEK_API_KEY` (DeepSeek defaults its base URL to
+`https://api.deepseek.com`). Passing the vars inline
+(`LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini OPENAI_API_KEY=sk-... uv run app.py`)
+also works if you'd rather not use a `.env` file.
+
+The two-calls-per-submission design and the input caps apply to every
+provider. Note that with a cloud provider the draft text is sent to that
+vendor; only the default `ollama` path keeps everything on the machine.
 
 ## Running with Docker
 
@@ -124,6 +196,10 @@ As an alternative to the local `uv`-based setup above, the whole stack
    into a persistent volume before starting the app and dashboard — this can
    take several minutes depending on connection speed. Subsequent runs reuse
    the cached volume and skip the download.
+
+   To run the containers against a cloud provider instead, set the `LLM_*`
+   vars on the `app` service in `docker-compose.yml` (a commented example is
+   there) and drop the `ollama` / `ollama-pull` services.
 
 3. Open the app at http://localhost:7860 and the dashboard at
    http://localhost:7861.

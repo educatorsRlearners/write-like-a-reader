@@ -39,9 +39,17 @@ services:
     restart: unless-stopped
     ports:
       - "7860:7860"
+    # For a cloud provider: uncomment env_file (put the key in .env, gitignored)
+    # or set the vars inline below, then remove the `ollama` / `ollama-pull`
+    # services and the `depends_on` block above.
+    # env_file: .env
     environment:
+      - LLM_PROVIDER=ollama
       - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_MODEL=qwen2.5:3b
+      # - LLM_PROVIDER=anthropic
+      # - LLM_MODEL=claude-sonnet-5
+      # - ANTHROPIC_API_KEY=sk-ant-...
       - APP_HOST=0.0.0.0
       - APP_PORT=7860
       - DB_PATH=/app/data/essays.db

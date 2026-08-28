@@ -5,6 +5,10 @@
 OLLAMA_MODEL ?= qwen2.5:3b
 OLLAMA_URL ?= http://localhost:11434
 
+# LLM backend. Defaults to local Ollama; `ensure-ollama` is skipped when set
+# to a cloud provider. See "Choosing an LLM provider" in README.md.
+LLM_PROVIDER ?= ollama
+
 # Resolved once, at parse time: use `uv` from PATH if it's already there,
 # otherwise fall back to the path the official installer (see ensure-uv)
 # puts it in, so later targets find it even if PATH hasn't been refreshed
@@ -43,7 +47,11 @@ data-dir: ## Create ./data and open its permissions for the Docker containers
 	mkdir -p data && chmod 777 data
 
 ensure-ollama: ## Install Ollama if missing, start it, and pull $(OLLAMA_MODEL)
-	@command -v ollama >/dev/null 2>&1 || { \
+	@[ "$(LLM_PROVIDER)" = "ollama" ] || { \
+		echo "LLM_PROVIDER=$(LLM_PROVIDER) -- skipping Ollama setup."; \
+		exit 0; \
+	}; \
+	command -v ollama >/dev/null 2>&1 || { \
 		echo "Ollama not found -- installing..."; \
 		case "$$(uname -s)" in \
 			Darwin) \
@@ -61,7 +69,8 @@ ensure-ollama: ## Install Ollama if missing, start it, and pull $(OLLAMA_MODEL)
 				exit 1 ;; \
 		esac; \
 	}
-	@curl -sf "$(OLLAMA_URL)" >/dev/null 2>&1 || { \
+	@[ "$(LLM_PROVIDER)" = "ollama" ] || exit 0; \
+	curl -sf "$(OLLAMA_URL)" >/dev/null 2>&1 || { \
 		echo "Starting Ollama service..."; \
 		nohup ollama serve >/tmp/ollama-serve.log 2>&1 & \
 		for i in 1 2 3 4 5 6 7 8 9 10; do \
@@ -69,8 +78,9 @@ ensure-ollama: ## Install Ollama if missing, start it, and pull $(OLLAMA_MODEL)
 			sleep 1; \
 		done; \
 	}
-	@echo "Pulling model $(OLLAMA_MODEL) (skips if already present)..."
-	@ollama pull $(OLLAMA_MODEL)
+	@[ "$(LLM_PROVIDER)" = "ollama" ] || exit 0; \
+	echo "Pulling model $(OLLAMA_MODEL) (skips if already present)..."; \
+	ollama pull $(OLLAMA_MODEL)
 
 docker-up: ## Build and start Ollama + app + dashboard via Docker Compose
 	docker compose up --build
