@@ -20,14 +20,21 @@ import config
 from errors import LLMError
 
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+XAI_BASE_URL = "https://api.x.ai/v1"
 
 # Each cloud provider reads its own conventional API-key env var (loaded from
-# .env by config.load_dotenv()). The vendor SDKs use these same names, so the
-# key is picked up straight from the environment.
+# .env when `config` is imported). The vendor SDKs use these same names, so
+# the key is picked up straight from the environment.
 PROVIDER_API_KEY_ENV = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
+    "grok": "GROK_API_KEY",
+}
+
+# Alternative env var names also accepted, tried after the primary above.
+PROVIDER_API_KEY_ENV_FALLBACKS = {
+    "grok": ("XAI_API_KEY",),  # the name xAI's own docs use
 }
 
 
@@ -45,22 +52,26 @@ class Provider(Protocol):
 
 
 def _require_api_key(provider: str) -> str:
+    # Defensive: `provider` is always a known cloud provider_name at the call
+    # sites, so this branch shouldn't fire in practice.
     env_name = PROVIDER_API_KEY_ENV.get(provider)
     if env_name is None:
         raise LLMError(f"No API-key env var configured for provider {provider!r}.")
-    key = os.environ.get(env_name)
-    if not key:
-        raise LLMError(
-            f"LLM_PROVIDER={provider!r} needs {env_name}. "
-            "Add it to your .env file (see .env.example)."
-        )
-    return key
+    for name in (env_name, *PROVIDER_API_KEY_ENV_FALLBACKS.get(provider, ())):
+        key = os.environ.get(name)
+        if key:
+            return key
+    raise LLMError(
+        f"LLM_PROVIDER={provider!r} needs {env_name}. "
+        "Add it to your .env file (see .env.example)."
+    )
 
 
 def _require_model(provider: str) -> str:
     if not (config.LLM_MODEL or "").strip():
         raise LLMError(
-            f"LLM_PROVIDER={provider!r} requires a model name. Set LLM_MODEL."
+            f"LLM_PROVIDER={provider!r} has no model. Add it to DEFAULT_MODELS "
+            "in config.py, or set LLM_MODEL_OVERRIDE."
         )
     return config.LLM_MODEL
 
@@ -72,13 +83,14 @@ class OllamaProvider:
         except ImportError as exc:  # pragma: no cover - ollama is a core dep
             raise LLMError("The 'ollama' package is not installed.") from exc
 
+        self._model = _require_model("ollama")
         self._client = ollama.Client(
             host=config.LLM_BASE_URL, timeout=config.LLM_TIMEOUT
         )
 
     def complete(self, prompt: str) -> LLMResponse:
         resp = self._client.chat(
-            model=config.LLM_MODEL,
+            model=self._model,
             messages=[{"role": "user", "content": prompt}],
             options={
                 "num_predict": config.LLM_MAX_TOKENS,
@@ -135,6 +147,11 @@ class DeepSeekProvider(OpenAIProvider):
     default_base_url = DEEPSEEK_BASE_URL
 
 
+class GrokProvider(OpenAIProvider):
+    provider_name = "grok"
+    default_base_url = XAI_BASE_URL
+
+
 class AnthropicProvider:
     provider_name = "anthropic"
 
@@ -150,7 +167,7 @@ class AnthropicProvider:
         self._model = _require_model(self.provider_name)
         self._client = anthropic.Anthropic(
             api_key=_require_api_key(self.provider_name),
-            base_url=config.LLM_BASE_URL or None,
+            base_url=config.LLM_BASE_URL,  # None (SDK default) unless overridden
             timeout=config.LLM_TIMEOUT,
         )
 
@@ -175,6 +192,7 @@ _PROVIDERS: dict[str, Callable[[], Provider]] = {
     "ollama": OllamaProvider,
     "openai": OpenAIProvider,
     "deepseek": DeepSeekProvider,
+    "grok": GrokProvider,
     "anthropic": AnthropicProvider,
 }
 

@@ -16,6 +16,7 @@ dependencies = [
 openai = ["openai>=1.0"]
 anthropic = ["anthropic>=0.40"]
 deepseek = ["openai>=1.0"]
+grok = ["openai>=1.0"]
 
 [dependency-groups]
 dev = [

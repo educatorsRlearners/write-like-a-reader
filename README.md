@@ -102,73 +102,74 @@ Other useful targets — run `make help` to see the full list:
   feedback quality and LLM latency/token cost)
 - `make clean` — remove cached bytecode and test caches
 
-Optional env vars (set in a `.env` file if you want to override the
-defaults): `OLLAMA_MODEL` (default `qwen2.5:3b`), `OLLAMA_HOST` (default
-is Ollama's own local default), `OLLAMA_TIMEOUT` (seconds, default `60`),
-`DB_PATH` (default `data/essays.db`). See the next section for the
-provider-selection vars.
+To change the model, Ollama URL, timeout, or ports, edit `config.py` — it
+holds all non-secret settings as plain Python values. See the next section
+for switching providers.
 
 ## Choosing an LLM provider
 
-The LLM backend is pluggable. `LLM_PROVIDER` selects the adapter in
-`llm_providers.py`; it defaults to `ollama`, so the local setup above needs
-no configuration and no credentials.
+The LLM backend is pluggable. Configuration splits three ways:
 
-| Var | Purpose | Default |
-| --- | --- | --- |
-| `LLM_PROVIDER` | `ollama` \| `openai` \| `anthropic` \| `deepseek` | `ollama` |
-| `LLM_MODEL` | model name for the chosen provider | falls back to `OLLAMA_MODEL` |
-| `OPENAI_API_KEY` | API key — set the one matching `LLM_PROVIDER` | — |
-| `ANTHROPIC_API_KEY` | " | — |
-| `DEEPSEEK_API_KEY` | " | — |
-| `LLM_BASE_URL` | override the provider's base URL (Azure, Groq, a proxy…) | provider default |
-| `LLM_TIMEOUT` | request timeout, seconds | falls back to `OLLAMA_TIMEOUT` (`60`) |
-| `LLM_MAX_TOKENS` | max tokens to generate per call | `4096` |
-| `LLM_NUM_CTX` | context window (Ollama only) | `8192` |
+- **`config.py`** — how the app behaves. `LLM_PROVIDER`
+  (`ollama` | `openai` | `anthropic` | `deepseek` | `grok`, default
+  `ollama`), plus `LLM_TIMEOUT`, `LLM_MAX_TOKENS`, `LLM_NUM_CTX`. Each
+  provider has a default model (`DEFAULT_MODELS`), so setting `LLM_PROVIDER`
+  is enough; set `LLM_MODEL_OVERRIDE` only to pick a different model. Edit
+  and commit these. The default `ollama` needs no changes and no credentials.
+- **`.env`** — secrets only. The API key for your provider
+  (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `DEEPSEEK_API_KEY` /
+  `GROK_API_KEY`), gitignored.
+- **Environment variables** — deployment bindings: `LLM_BASE_URL` (the API
+  endpoint — docker-compose points it at the in-cluster Ollama; a cloud user
+  can point it at an Azure/Groq/proxy gateway), `APP_HOST`/`APP_PORT`,
+  `DASHBOARD_HOST`/`DASHBOARD_PORT`, `DB_PATH`. Each has a default in
+  `config.py` for local use; docker-compose overrides them for the container.
 
 The cloud SDKs are optional dependencies — install the extra for the
 provider you want:
 
 ```
-uv sync --extra openai       # also covers deepseek
+uv sync --extra openai       # also covers deepseek and grok
 uv sync --extra anthropic
 ```
 
-### API keys via `.env`
+### Switching to a cloud provider
 
-Copy the template and fill in only the key for the provider you're using:
+1. In `config.py`, set the provider (the model defaults from
+   `DEFAULT_MODELS`; add `LLM_MODEL_OVERRIDE = "..."` to change it):
 
-```
-cp .env.example .env
-```
+   ```python
+   # config.py
+   LLM_PROVIDER = "openai"
+   ```
 
-```
-# .env
-LLM_PROVIDER=openai
-LLM_MODEL=gpt-4o-mini
-OPENAI_API_KEY=sk-...
-```
+2. Put the API key in `.env` (copy `.env.example` first):
 
-`config.py` loads this on startup:
+   ```
+   cp .env.example .env
+   ```
 
-```python
-from dotenv import load_dotenv
-load_dotenv()
-```
+   ```
+   # .env  — secrets only
+   OPENAI_API_KEY=sk-...
+   ```
 
-so each vendor SDK (`OpenAI()`, `Anthropic()`) reads its key straight from the
-environment — no other code changes. `.env` is gitignored; never commit it.
-Then just run:
+   `config.py` calls `load_dotenv()` at startup, so each vendor SDK
+   (`OpenAI()`, `Anthropic()`) reads its key straight from the environment.
+   `.env` is gitignored; never commit it.
 
-```
-uv run app.py
-```
+3. Install the SDK and run:
 
-Anthropic and DeepSeek work the same way with `ANTHROPIC_API_KEY` /
-`DEEPSEEK_API_KEY` (DeepSeek defaults its base URL to
-`https://api.deepseek.com`). Passing the vars inline
-(`LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini OPENAI_API_KEY=sk-... uv run app.py`)
-also works if you'd rather not use a `.env` file.
+   ```
+   uv sync --extra openai
+   uv run app.py
+   ```
+
+Anthropic, DeepSeek, and Grok work the same way with `ANTHROPIC_API_KEY` /
+`DEEPSEEK_API_KEY` / `GROK_API_KEY` (Grok also accepts `XAI_API_KEY`).
+DeepSeek and Grok are OpenAI-compatible
+(`uv sync --extra openai`), defaulting their base URLs to
+`https://api.deepseek.com` and `https://api.x.ai/v1` respectively.
 
 The two-calls-per-submission design and the input caps apply to every
 provider. Note that with a cloud provider the draft text is sent to that
@@ -197,9 +198,12 @@ As an alternative to the local `uv`-based setup above, the whole stack
    take several minutes depending on connection speed. Subsequent runs reuse
    the cached volume and skip the download.
 
-   To run the containers against a cloud provider instead, set the `LLM_*`
-   vars on the `app` service in `docker-compose.yml` (a commented example is
-   there) and drop the `ollama` / `ollama-pull` services.
+   To run the containers against a cloud provider instead: set
+   `LLM_PROVIDER` in `config.py`, put the API key in `.env`
+   (the `app` service loads it via `env_file`), and drop the `ollama` /
+   `ollama-pull` services from `docker-compose.yml`. The `environment:`
+   block on the `app` service is deployment bindings only (bind address,
+   DB path, and the in-cluster Ollama URL).
 
 3. Open the app at http://localhost:7860 and the dashboard at
    http://localhost:7861.

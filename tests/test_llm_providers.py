@@ -21,7 +21,11 @@ def reset_provider_cache():
 def clear_api_keys(monkeypatch):
     """config.py runs load_dotenv() at import, so a real .env key could leak
     into the test process — strip all provider keys unless a test sets one."""
-    for env_name in llm_providers.PROVIDER_API_KEY_ENV.values():
+    fallbacks = [
+        n for names in llm_providers.PROVIDER_API_KEY_ENV_FALLBACKS.values()
+        for n in names
+    ]
+    for env_name in [*llm_providers.PROVIDER_API_KEY_ENV.values(), *fallbacks]:
         monkeypatch.delenv(env_name, raising=False)
 
 
@@ -160,6 +164,15 @@ def test_ollama_missing_token_counts(cfg, monkeypatch):
     assert get_provider().complete("hi") == LLMResponse("x", None, None)
 
 
+def test_ollama_requires_model(cfg, monkeypatch):
+    cfg(LLM_MODEL=None)
+    monkeypatch.setitem(
+        sys.modules, "ollama", _fake_module("ollama", Client=lambda **kw: None)
+    )
+    with pytest.raises(LLMError, match="has no model"):
+        get_provider()
+
+
 # --- OpenAI / DeepSeek -------------------------------------------------------
 
 def _fake_openai_response(content, prompt_tokens=None, completion_tokens=None):
@@ -192,7 +205,7 @@ def test_openai_requires_model(cfg, monkeypatch):
     cfg(LLM_PROVIDER="openai", LLM_MODEL=None)
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     _install_openai(monkeypatch, client_cls=lambda **kw: object())
-    with pytest.raises(LLMError, match="requires a model name"):
+    with pytest.raises(LLMError, match="has no model"):
         get_provider()
 
 
@@ -226,6 +239,35 @@ def test_deepseek_ignores_openai_api_key(cfg, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "not-this-one")
     _install_openai(monkeypatch, client_cls=lambda **kw: object())
     with pytest.raises(LLMError, match="DEEPSEEK_API_KEY"):
+        get_provider()
+
+
+# --- Grok (xAI, OpenAI-compatible) ------------------------------------------
+
+def test_grok_defaults_base_url_and_reads_grok_api_key(cfg, monkeypatch):
+    cfg(LLM_PROVIDER="grok")
+    monkeypatch.setenv("GROK_API_KEY", "xai-key")
+    _install_openai(monkeypatch)
+    get_provider().complete("hi")
+    assert _FakeOpenAI.seen["base_url"] == llm_providers.XAI_BASE_URL
+    assert _FakeOpenAI.seen["api_key"] == "xai-key"
+
+
+def test_grok_falls_back_to_xai_api_key(cfg, monkeypatch):
+    """xAI's own env var name is accepted when GROK_API_KEY is unset."""
+    cfg(LLM_PROVIDER="grok")
+    monkeypatch.setenv("XAI_API_KEY", "from-xai")
+    _install_openai(monkeypatch)
+    get_provider().complete("hi")
+    assert _FakeOpenAI.seen["api_key"] == "from-xai"
+
+
+def test_grok_ignores_openai_api_key(cfg, monkeypatch):
+    """Grok must key off GROK_API_KEY / XAI_API_KEY, not OPENAI_API_KEY."""
+    cfg(LLM_PROVIDER="grok")
+    monkeypatch.setenv("OPENAI_API_KEY", "not-this-one")
+    _install_openai(monkeypatch, client_cls=lambda **kw: object())
+    with pytest.raises(LLMError, match="GROK_API_KEY"):
         get_provider()
 
 

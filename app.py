@@ -67,8 +67,9 @@ def _status_notice(result: pipeline.PipelineResult) -> str:
         else:
             key_var = llm_providers.PROVIDER_API_KEY_ENV[LLM_PROVIDER]
             fix = (
-                f"Check that {key_var} is set in your .env and LLM_MODEL is "
-                f"valid for the '{LLM_PROVIDER}' provider, then try again."
+                f"Check that {key_var} is set in your .env and that LLM_MODEL "
+                f"in config.py is valid for the '{LLM_PROVIDER}' provider, "
+                "then try again."
             )
         return (
             "⚠️ Could not get feedback for any sentence — the feedback backend "

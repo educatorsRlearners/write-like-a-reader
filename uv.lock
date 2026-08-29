@@ -1274,6 +1274,9 @@ anthropic = [
 deepseek = [
     { name = "openai" },
 ]
+grok = [
+    { name = "openai" },
+]
 openai = [
     { name = "openai" },
 ]
@@ -1289,11 +1292,12 @@ requires-dist = [
     { name = "gradio", specifier = ">=5.0" },
     { name = "ollama", specifier = ">=0.4" },
     { name = "openai", marker = "extra == 'deepseek'", specifier = ">=1.0" },
+    { name = "openai", marker = "extra == 'grok'", specifier = ">=1.0" },
     { name = "openai", marker = "extra == 'openai'", specifier = ">=1.0" },
     { name = "pysbd", specifier = ">=0.3.4" },
     { name = "python-dotenv", specifier = ">=1.0" },
 ]
-provides-extras = ["openai", "anthropic", "deepseek"]
+provides-extras = ["openai", "anthropic", "deepseek", "grok"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
