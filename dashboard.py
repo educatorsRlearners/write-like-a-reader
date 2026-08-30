@@ -85,6 +85,50 @@ def _llm_token_usage_df() -> pd.DataFrame:
     """)
 
 
+# A row's provider/model label. `model` can be NULL (e.g. a cloud provider
+# with no resolved model), and SQLite `||` propagates NULL, so COALESCE both
+# sides rather than lose the row to a NULL category.
+_PROVIDER_MODEL_LABEL = "COALESCE(provider, '?') || ' / ' || COALESCE(model, '?')"
+
+
+def _llm_provider_duration_df() -> pd.DataFrame:
+    return _query_df(f"""
+        SELECT {_PROVIDER_MODEL_LABEL} || ' (' || call_type || ')' AS series,
+               AVG(duration_ms) AS avg_duration_ms,
+               COUNT(*) AS n
+        FROM llm_calls
+        WHERE provider IS NOT NULL
+        GROUP BY series
+        ORDER BY series
+    """)
+
+
+def _llm_provider_tokens_df() -> pd.DataFrame:
+    return _query_df(f"""
+        SELECT {_PROVIDER_MODEL_LABEL} || ' (' || call_type || ')' AS series,
+               AVG(prompt_tokens + completion_tokens) AS avg_total_tokens
+        FROM llm_calls
+        WHERE provider IS NOT NULL
+          AND prompt_tokens IS NOT NULL AND completion_tokens IS NOT NULL
+        GROUP BY series
+        ORDER BY series
+    """)
+
+
+def _llm_provider_failure_df() -> pd.DataFrame:
+    return _query_df(f"""
+        SELECT {_PROVIDER_MODEL_LABEL} AS provider_model,
+               COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+               COUNT(*) AS total,
+               CAST(COUNT(*) FILTER (WHERE status = 'failed') AS REAL)
+                   / COUNT(*) AS failure_rate
+        FROM llm_calls
+        WHERE provider IS NOT NULL
+        GROUP BY provider_model
+        ORDER BY provider_model
+    """)
+
+
 with gr.Blocks(title="Write Like a Reader — Dashboard") as dashboard:
     gr.Markdown("# Write Like a Reader — Dashboard")
     refresh_btn = gr.Button("Refresh")
@@ -113,6 +157,23 @@ with gr.Blocks(title="Write Like a Reader — Dashboard") as dashboard:
             title="Average total tokens by call type",
         )
 
+    with gr.Tab("Provider / Model"):
+        provider_duration_plot = gr.BarPlot(
+            x="series",
+            y="avg_duration_ms",
+            title="Avg duration by provider/model and call type",
+        )
+        provider_tokens_plot = gr.BarPlot(
+            x="series",
+            y="avg_total_tokens",
+            title="Avg total tokens by provider/model and call type",
+        )
+        provider_failure_plot = gr.BarPlot(
+            x="provider_model",
+            y="failure_rate",
+            title="Failure rate by provider/model",
+        )
+
     def _refresh_all():
         return (
             _feedback_volume_df(),
@@ -121,6 +182,9 @@ with gr.Blocks(title="Write Like a Reader — Dashboard") as dashboard:
             _llm_failure_rate_df(),
             _llm_per_sentence_cost_df(),
             _llm_token_usage_df(),
+            _llm_provider_duration_df(),
+            _llm_provider_tokens_df(),
+            _llm_provider_failure_df(),
         )
 
     _outputs = [
@@ -130,6 +194,9 @@ with gr.Blocks(title="Write Like a Reader — Dashboard") as dashboard:
         failure_plot,
         per_sentence_plot,
         token_plot,
+        provider_duration_plot,
+        provider_tokens_plot,
+        provider_failure_plot,
     ]
     dashboard.load(_refresh_all, outputs=_outputs)
     refresh_btn.click(_refresh_all, outputs=_outputs)

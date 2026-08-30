@@ -1,6 +1,9 @@
+import sqlite3
 from unittest.mock import patch
 
+import config
 import prompts
+import storage
 from llm_client import LLMError
 from pipeline import run
 
@@ -134,6 +137,33 @@ def test_checker_failure_fails_open_to_unanswered():
     sentence_0_annotations = [a for a in result.annotations if a.sentence_index == 0]
     assert len(sentence_0_annotations) == 1
     assert sentence_0_annotations[0].questions[0].text == "Why was it tired?"
+
+
+def test_llm_calls_tagged_with_configured_provider_and_model(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    monkeypatch.setattr(config, "LLM_PROVIDER", "test-provider")
+    monkeypatch.setattr(config, "LLM_MODEL", "test-model-1")
+
+    text = "The cat sat. It was tired."
+    questioner_response = {"0": ["Why was it tired?"], "1": ["What next?"]}
+    checker_response = {"0": [True]}
+
+    essay_id = storage.save_essay(text)
+    with patch(
+        "llm_client.generate_json",
+        side_effect=_fake_generate_json(questioner_response, checker_response),
+    ):
+        run(text, essay_id=essay_id)
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT call_type, provider, model FROM llm_calls ORDER BY call_type"
+        ).fetchall()
+
+    assert rows == [
+        ("checker", "test-provider", "test-model-1"),
+        ("questioner", "test-provider", "test-model-1"),
+    ]
 
 
 def test_malformed_question_entries_are_skipped():

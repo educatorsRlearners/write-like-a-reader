@@ -72,7 +72,12 @@ recommend it but aren't direct users of the app itself.
    to this effect. Storage failures never block the student from getting
    feedback (fail open).
 7. `dashboard.py` is a separate Gradio app that reads the same database to
-   show feedback-quality trends and LLM latency/token-cost charts.
+   show feedback-quality trends and LLM latency/token-cost charts. Each
+   `llm_calls` row is tagged with the provider and model that served it
+   (`config.LLM_PROVIDER` / `config.LLM_MODEL` at the time of the call), and
+   the dashboard's "Provider / Model" tab compares duration, token usage, and
+   failure rate across them. Rows written before a provider switch keep their
+   old tag; rows from before this feature (or a recreated DB) are untagged.
 
 There's no accounts and no auth. By default there are also no cloud LLM
 calls — everything runs against a local Ollama model and no draft text

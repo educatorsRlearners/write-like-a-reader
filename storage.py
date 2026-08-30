@@ -49,11 +49,17 @@ def init_db() -> None:
                 prompt_tokens INTEGER,
                 completion_tokens INTEGER,
                 error_message TEXT,
+                provider TEXT,
+                model TEXT,
                 created_at TEXT NOT NULL
             )
             """)
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_llm_calls_essay_id ON llm_calls(essay_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_llm_calls_provider_model "
+            "ON llm_calls(provider, model)"
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_llm_calls_call_type ON llm_calls(call_type)"
@@ -125,6 +131,8 @@ def save_llm_call(
     prompt_tokens: int | None = None,
     completion_tokens: int | None = None,
     error_message: str | None = None,
+    provider: str | None = None,
+    model: str | None = None,
 ) -> None:
     """Persist one timing/outcome row for a single `generate_json()` call.
 
@@ -137,8 +145,9 @@ def save_llm_call(
         conn.execute(
             "INSERT INTO llm_calls "
             "(essay_id, sentence_index, sentence_count, call_type, status, retries, "
-            "duration_ms, prompt_tokens, completion_tokens, error_message, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "duration_ms, prompt_tokens, completion_tokens, error_message, "
+            "provider, model, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 essay_id,
                 sentence_index,
@@ -150,6 +159,8 @@ def save_llm_call(
                 prompt_tokens,
                 completion_tokens,
                 error_message,
+                provider,
+                model,
                 datetime.now(timezone.utc).isoformat(),
             ),
         )
