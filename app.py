@@ -4,10 +4,18 @@ import tempfile
 import gradio as gr
 
 import highlight
+import llm_providers
 import pipeline
 import sentence_split
 import storage
-from config import APP_HOST, APP_PORT, EXAMPLE_DRAFT, MAX_SENTENCES, MAX_WORDS
+from config import (
+    APP_HOST,
+    APP_PORT,
+    EXAMPLE_DRAFT,
+    LLM_PROVIDER,
+    MAX_SENTENCES,
+    MAX_WORDS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +54,26 @@ def _status_notice(result: pipeline.PipelineResult) -> str:
     if n == 0:
         return ""
     if len(result.failed_rounds) == n:
+        if LLM_PROVIDER == "ollama":
+            fix = (
+                "Check that Ollama is running (`ollama serve`) and the model has "
+                "been pulled, then try again."
+            )
+        elif LLM_PROVIDER not in llm_providers.PROVIDER_API_KEY_ENV:
+            fix = (
+                f"LLM_PROVIDER={LLM_PROVIDER!r} is not a recognized backend "
+                "(expected: ollama, openai, anthropic, deepseek)."
+            )
+        else:
+            key_var = llm_providers.PROVIDER_API_KEY_ENV[LLM_PROVIDER]
+            fix = (
+                f"Check that {key_var} is set in your .env and that LLM_MODEL "
+                f"in config.py is valid for the '{LLM_PROVIDER}' provider, "
+                "then try again."
+            )
         return (
             "⚠️ Could not get feedback for any sentence — the feedback backend "
-            "was unreachable. Check that Ollama is running (`ollama serve`) and "
-            "the model has been pulled, then try again."
+            f"was unreachable. {fix}"
         )
     if 0 in result.failed_rounds:
         return (
@@ -84,7 +108,11 @@ def get_feedback(draft_text: str, progress=gr.Progress()):
     try:
         result = pipeline.run(draft_text, essay_id=essay_id, on_progress=on_progress)
     except Exception as exc:
-        raise gr.Error(f"Feedback run failed unexpectedly: {exc}") from exc
+        logger.exception("Feedback run failed unexpectedly")
+        raise gr.Error(
+            f"Feedback run failed unexpectedly ({type(exc).__name__}). "
+            "See the server logs for details."
+        ) from exc
 
     if essay_id is not None:
         try:

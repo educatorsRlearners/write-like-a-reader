@@ -2,6 +2,7 @@ import logging
 import re
 import time
 
+import config
 import llm_client
 import prompts
 import storage
@@ -97,6 +98,9 @@ def _record_call(
     prompt_tokens,
     completion_tokens,
     error_message,
+    *,
+    provider,
+    model,
 ):
     if essay_id is None:
         return
@@ -112,6 +116,8 @@ def _record_call(
             prompt_tokens,
             completion_tokens,
             error_message,
+            provider=provider,
+            model=model,
         )
     except Exception:
         logger.warning("Failed to save LLM call timing", exc_info=True)
@@ -125,6 +131,7 @@ def _timed_call(
     here, so a checker failure can never get mis-logged as a questioner row.
     """
     retries = 0
+    provider, model = config.LLM_PROVIDER, config.LLM_MODEL
 
     def _bump():
         nonlocal retries
@@ -153,6 +160,8 @@ def _timed_call(
             prompt_tokens,
             completion_tokens,
             str(exc),
+            provider=provider,
+            model=model,
         )
         raise
     duration_ms = int((time.perf_counter() - start) * 1000)
@@ -166,6 +175,8 @@ def _timed_call(
         prompt_tokens,
         completion_tokens,
         None,
+        provider=provider,
+        model=model,
     )
     return data
 

@@ -2,9 +2,6 @@
 # On native Windows without one of those, use `docker compose` directly
 # instead of `make` (see the "Running with Docker" section in README.md).
 
-OLLAMA_MODEL ?= qwen2.5:3b
-OLLAMA_URL ?= http://localhost:11434
-
 # Resolved once, at parse time: use `uv` from PATH if it's already there,
 # otherwise fall back to the path the official installer (see ensure-uv)
 # puts it in, so later targets find it even if PATH hasn't been refreshed
@@ -42,8 +39,14 @@ dashboard: ensure-uv ## Launch the feedback/latency dashboard (port 7861)
 data-dir: ## Create ./data and open its permissions for the Docker containers
 	mkdir -p data && chmod 777 data
 
-ensure-ollama: ## Install Ollama if missing, start it, and pull $(OLLAMA_MODEL)
-	@command -v ollama >/dev/null 2>&1 || { \
+ensure-ollama: sync ## Install Ollama if missing, start it, and pull the model from config.py
+	@CFG=$$($(UV) run python -c "import config; print(config.LLM_PROVIDER, config.LLM_MODEL, config.LLM_BASE_URL)"); \
+	set -- $$CFG; PROVIDER=$$1; MODEL=$$2; URL=$$3; \
+	if [ "$$PROVIDER" != "ollama" ]; then \
+		echo "LLM_PROVIDER=$$PROVIDER -- skipping Ollama setup."; \
+		exit 0; \
+	fi; \
+	command -v ollama >/dev/null 2>&1 || { \
 		echo "Ollama not found -- installing..."; \
 		case "$$(uname -s)" in \
 			Darwin) \
@@ -60,17 +63,17 @@ ensure-ollama: ## Install Ollama if missing, start it, and pull $(OLLAMA_MODEL)
 				echo "'make docker-up' instead, which runs Ollama in a container."; \
 				exit 1 ;; \
 		esac; \
-	}
-	@curl -sf "$(OLLAMA_URL)" >/dev/null 2>&1 || { \
+	}; \
+	curl -sf "$$URL" >/dev/null 2>&1 || { \
 		echo "Starting Ollama service..."; \
 		nohup ollama serve >/tmp/ollama-serve.log 2>&1 & \
 		for i in 1 2 3 4 5 6 7 8 9 10; do \
-			curl -sf "$(OLLAMA_URL)" >/dev/null 2>&1 && break; \
+			curl -sf "$$URL" >/dev/null 2>&1 && break; \
 			sleep 1; \
 		done; \
-	}
-	@echo "Pulling model $(OLLAMA_MODEL) (skips if already present)..."
-	@ollama pull $(OLLAMA_MODEL)
+	}; \
+	echo "Pulling model $$MODEL (skips if already present)..."; \
+	ollama pull "$$MODEL"
 
 docker-up: ## Build and start Ollama + app + dashboard via Docker Compose
 	docker compose up --build

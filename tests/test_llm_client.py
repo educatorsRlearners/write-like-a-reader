@@ -4,6 +4,7 @@ import pytest
 
 import llm_client
 from llm_client import LLMError, generate_json
+from llm_providers import LLMResponse
 
 
 @pytest.fixture(autouse=True)
@@ -12,12 +13,11 @@ def no_sleep(monkeypatch):
 
 
 def _response(content, prompt_eval_count=None, eval_count=None):
-    resp = {"message": {"content": content}}
-    if prompt_eval_count is not None:
-        resp["prompt_eval_count"] = prompt_eval_count
-    if eval_count is not None:
-        resp["eval_count"] = eval_count
-    return resp
+    return LLMResponse(
+        text=content,
+        prompt_tokens=prompt_eval_count,
+        completion_tokens=eval_count,
+    )
 
 
 def test_valid_json_object():
@@ -75,6 +75,19 @@ def test_transient_error_exhausts_retries_raises():
             generate_json("prompt", max_transient_retries=2)
 
 
+def test_llm_error_surfaces_immediately_without_transient_retry():
+    calls = {"n": 0}
+
+    def boom(_prompt):
+        calls["n"] += 1
+        raise LLMError("missing API key")
+
+    with patch.object(llm_client, "_call_model", side_effect=boom):
+        with pytest.raises(LLMError, match="missing API key"):
+            generate_json("prompt", max_transient_retries=2)
+    assert calls["n"] == 1  # config errors are not retried as transient
+
+
 def test_on_attempt_called_once_per_retry_not_on_clean_success():
     attempts = []
     with patch.object(llm_client, "_call_model", return_value=_response('{"ok": true}')):
@@ -116,6 +129,21 @@ def test_on_result_receives_token_counts():
     ):
         generate_json("prompt", on_result=lambda pt, ct: captured.append((pt, ct)))
     assert captured == [(42, 7)]
+
+
+def test_on_result_reports_the_retry_responses_counts_after_json_retry():
+    captured = []
+    responses = iter([
+        _response("not json"),
+        _response('{"ok": true}', prompt_eval_count=99, eval_count=11),
+    ])
+    with patch.object(llm_client, "_call_model", side_effect=lambda _p: next(responses)):
+        generate_json(
+            "prompt",
+            retry_prompt="please respond with only JSON",
+            on_result=lambda pt, ct: captured.append((pt, ct)),
+        )
+    assert captured == [(99, 11)]
 
 
 def test_on_result_defaults_to_none_when_backend_omits_counts():

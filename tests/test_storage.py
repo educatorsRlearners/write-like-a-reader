@@ -122,6 +122,31 @@ def test_save_llm_call_persists_batched_row(tmp_path, monkeypatch):
     assert row == (essay_id, None, 3, "questioner", "success", 1, 1234, 100, 50, None)
 
 
+def test_save_llm_call_persists_provider_and_model(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
+    essay_id = storage.save_essay("Some draft.")
+
+    storage.save_llm_call(
+        essay_id,
+        None,
+        3,
+        "questioner",
+        "success",
+        0,
+        1234,
+        provider="ollama",
+        model="qwen2.5:3b",
+    )
+
+    with sqlite3.connect(storage.DB_PATH) as conn:
+        provider, model = conn.execute(
+            "SELECT provider, model FROM llm_calls"
+        ).fetchone()
+
+    assert provider == "ollama"
+    assert model == "qwen2.5:3b"
+
+
 def test_save_llm_call_records_failure_with_error_message(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "essays.db"))
     essay_id = storage.save_essay("Some draft.")
