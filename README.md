@@ -253,9 +253,6 @@ Everything is a flat set of top-level modules wired together by two Gradio
 | `dashboard.py` | Read-only Gradio app over the same DB |
 | `config.py` | Single source of configuration (app config / deployment bindings / `.env` secrets) |
 
-See [`CLAUDE.md`](CLAUDE.md) for the full module-by-module walkthrough and data
-flow.
-
 ## Development
 
 ```
