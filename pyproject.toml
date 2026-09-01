@@ -1,9 +1,10 @@
 [project]
 name = "write-like-a-reader"
 version = "0.1.0"
-description = "Add your description here"
+description = "A peer-review writing exercise: an LLM asks what a reader would still want to know after each sentence, and flags the questions the draft never answers."
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "MIT" }
 dependencies = [
     "gradio>=5.0",
     "ollama>=0.4",
