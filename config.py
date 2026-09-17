@@ -34,7 +34,7 @@ def _env_int(name: str, default: int) -> int:
 #                 GROK_API_KEY (or XAI_API_KEY). Install: uv sync --extra openai
 #
 # An unknown value raises LLMError at first use, listing the valid options.
-LLM_PROVIDER = "ollama"
+LLM_PROVIDER = "grok"
 
 # Each provider has a sensible default model, so setting a provider is enough.
 DEFAULT_MODELS = {

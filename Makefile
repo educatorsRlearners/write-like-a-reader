@@ -24,8 +24,13 @@ ensure-uv: ## Install uv (the Python package manager) if missing
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	}
 
-sync: ensure-uv ## Install/sync dependencies (uv sync)
-	$(UV) sync
+sync: ensure-uv ## Install/sync dependencies (uv sync), pulling in the cloud SDK LLM_PROVIDER needs
+	@PROVIDER=$$($(UV) run python -c "import config; print(config.LLM_PROVIDER)" 2>/dev/null || echo ollama); \
+	case "$$PROVIDER" in \
+		openai|anthropic|deepseek|grok) EXTRA="--extra $$PROVIDER" ;; \
+		*) EXTRA="" ;; \
+	esac; \
+	$(UV) sync $$EXTRA
 
 test: ensure-uv ## Run the test suite (uv run pytest)
 	$(UV) run pytest
